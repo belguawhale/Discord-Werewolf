@@ -1,0 +1,9 @@
+OWNER_ID = 'owner id (owner has all perms)'
+BOT_PREFIX = '!'
+TOKEN = 'bot token goes here'
+GAME_CHANNEL = 'lobby channel id'
+DEBUG_CHANNEL = 'debug channel id (for all your errors and debug stuff)'
+WEREWOLF_SERVER = 'id of server the bot is running on'
+PLAYERS_ROLE_NAME = 'Players'
+ADMINS_ROLE_NAME = 'Admins'
+ADMINS = ['admin id', 'admin 2 id', 'etc.']
