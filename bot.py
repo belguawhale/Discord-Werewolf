@@ -212,10 +212,10 @@ async def cmd_fleave(message, parameters):
         if member in list(session[1].keys()):
             if session[0]:
                 session[1][member][0] = False
-                leave_msg += "**" + get_name(i) + "** was forcibly shoved into a fire. The air smells of freshly burnt **" + session[1][member][1] + "**.\n"
+                leave_msg += "**" + get_name(member) + "** was forcibly shoved into a fire. The air smells of freshly burnt **" + session[1][member][1] + "**.\n"
             else:
                 del session[1][member]
-                leave_msg += "**" + get_name(i) + "** was forced to leave the game.\n"
+                leave_msg += "**" + get_name(member) + "** was forced to leave the game.\n"
             if client.get_server(WEREWOLF_SERVER).get_member(member):
                 await client.remove_roles(client.get_server(WEREWOLF_SERVER).get_member(member), PLAYERS_ROLE)
     await client.send_message(client.get_channel(GAME_CHANNEL), leave_msg)
@@ -337,10 +337,11 @@ async def cmd_role(message, parameters):
 
 async def cmd_myrole(message, parameters):
     if session[0]:
-        for player in session[1].keys():
-            member = client.get_server(WEREWOLF_SERVER).get_member(player)
-            if member and session[1][player][0]:
-                role = session[1][player][1]
+        player = message.author.id
+        member = client.get_server(WEREWOLF_SERVER).get_member(player)
+        if member and session[1][player][0]:
+            role = session[1][player][1]
+            try:
                 await client.send_message(member, "Your role is **" + role + "**. " + roles[role][2])
                 if roles[role][0] == 'wolf':
                     temp_players = []
@@ -357,6 +358,8 @@ async def cmd_myrole(message, parameters):
                     for plr in [x for x in session[1].keys() if session[1][x][0]]:
                         temp_players.append('**' + get_name(plr) + '** (' + plr + ')')
                     await client.send_message(member, "Players still alive: " + ', '.join(temp_players).rstrip(', '))
+            except:
+                await client.send_message(client.get_channel(GAME_CHANNEL), member.mention + ", you cannot play the game if you block me")
 
 async def cmd_stats(message, parameters):
     if session[0]:
@@ -779,7 +782,10 @@ def get_player(string):
 
 async def wolfchat(message):
     for wolf in [x for x in session[1].keys() if x != message.author.id and roles[session[1][x][1]][0] == 'wolf' and client.get_server(WEREWOLF_SERVER).get_member(x)]:
-        await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(wolf), "**[Wolfchat]** message from **" + message.author.name + "**: " + message.content)
+        try:
+            await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(wolf), "**[Wolfchat]** message from **" + message.author.name + "**: " + message.content)
+        except:
+            pass
 
 async def cmd_test(message, parameters):
     pass
@@ -820,23 +826,26 @@ async def run_game(message):
         for player in session[1].keys():
             member = client.get_server(WEREWOLF_SERVER).get_member(player)
             if member and session[1][player][0]:
-                role = session[1][player][1]
-                await client.send_message(member, "Your role is **" + role + "**. " + roles[role][2])
-                if roles[role][0] == 'wolf':
-                    temp_players = []
-                    for plr in [x for x in session[1].keys() if session[1][x][0]]:
-                        if roles[session[1][plr][1]][0] == 'wolf':
-                            temp_players.append('**' + get_name(plr) + '** (' + plr + ') (**' + session[1][plr][1] + '**)')
-                        elif session[1][plr][3] == 'cursed':
-                            temp_players.append('**' + get_name(plr) + '** (' + plr + ') (**cursed**)')
-                        else:
+                try:
+                    role = session[1][player][1]
+                    await client.send_message(member, "Your role is **" + role + "**. " + roles[role][2])
+                    if roles[role][0] == 'wolf':
+                        temp_players = []
+                        for plr in [x for x in session[1].keys() if session[1][x][0]]:
+                            if roles[session[1][plr][1]][0] == 'wolf':
+                                temp_players.append('**' + get_name(plr) + '** (' + plr + ') (**' + session[1][plr][1] + '**)')
+                            elif session[1][plr][3] == 'cursed':
+                                temp_players.append('**' + get_name(plr) + '** (' + plr + ') (**cursed**)')
+                            else:
+                                temp_players.append('**' + get_name(plr) + '** (' + plr + ')')
+                        await client.send_message(member, "Players still alive: " + ', '.join(temp_players).rstrip(', '))
+                    elif role == 'seer':
+                        temp_players = []
+                        for plr in [x for x in session[1].keys() if session[1][x][0]]:
                             temp_players.append('**' + get_name(plr) + '** (' + plr + ')')
-                    await client.send_message(member, "Players still alive: " + ', '.join(temp_players).rstrip(', '))
-                elif role == 'seer':
-                    temp_players = []
-                    for plr in [x for x in session[1].keys() if session[1][x][0]]:
-                        temp_players.append('**' + get_name(plr) + '** (' + plr + ')')
-                    await client.send_message(member, "Players still alive: " + ', '.join(temp_players).rstrip(', '))
+                        await client.send_message(member, "Players still alive: " + ', '.join(temp_players).rstrip(', '))
+                except:
+                    await client.send_message(client.get_channel(GAME_CHANNEL), member.mention + ", you cannot play the game if you block me")
                     
         # NIGHT
         session[3][0] = datetime.now()
