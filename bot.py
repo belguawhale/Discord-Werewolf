@@ -14,6 +14,7 @@ client = discord.Client()
 session = [False, {}, False, [0, 0], [timedelta(0), timedelta(0)]]
 PLAYERS_ROLE = None
 ADMINS_ROLE = None
+WEREWOLF_NOTIFY_ROLE = None
 random.seed(datetime.now())
 ################### END INIT ######################
 
@@ -32,6 +33,9 @@ async def on_ready():
         if role.name == ADMINS_ROLE_NAME:
             global ADMINS_ROLE
             ADMINS_ROLE = role
+        if role.name == WEREWOLF_NOTIFY_ROLE_NAME:
+            global WEREWOLF_NOTIFY_ROLE
+            WEREWOLF_NOTIFY_ROLE = role
     if PLAYERS_ROLE:
         await log(0, "Players role id: " + PLAYERS_ROLE.id)
     else:
@@ -40,6 +44,10 @@ async def on_ready():
         await log(0, "Admins role id: " + ADMINS_ROLE.id)
     else:
         await log(2, "Could not find admins role " + ADMINS_ROLE_NAME)
+    if WEREWOLF_NOTIFY_ROLE:
+        await log(0, "Werewolf Notify role id: " + WEREWOLF_NOTIFY_ROLE.id)
+    else:
+        await log(1, "Could not find Werewolf Notify role " + WEREWOLF_NOTIFY_ROLE_NAME)
 
 @client.event
 async def on_message(message):
@@ -365,13 +373,13 @@ async def cmd_myrole(message, parameters):
                                 temp_players.append('**' + get_name(plr) + '** (' + plr + ') (**cursed**)')
                             else:
                                 temp_players.append('**' + get_name(plr) + '** (' + plr + ')')
-                        msg += "Available targets: " + ', '.join(temp_players).rstrip(', ') + '\n'
+                        msg += "Living players: " + ', '.join(temp_players).rstrip(', ') + '\n'
                     elif role == 'shaman':
                         if session[1][player][2] in totems:
                             totem = session[1][player][2]
                             msg += "You have the **{0}**. {1}".format(totem.replace('_', ' '), totems[totem]) + '\n'
                     if role in ['seer', 'shaman']:
-                        msg += "Available targets: " + living_players + '\n'
+                        msg += "Living players: " + living_players + '\n'
                     if msg != '':
                         await client.send_message(member, msg)
                 except discord.Forbidden:
@@ -468,7 +476,7 @@ async def cmd_kill(message, parameters):
             if player:
                 if player == message.author.id:
                     await reply(message, "You can't kill yourself.")
-                elif player in [x for x in list(session[1].keys()) if roles[session[1][x][1]][0] == 'wolf']:
+                elif player in [x for x in list(session[1].keys()) if roles[session[1][x][1]][0] == 'wolf' and session[1][x][1] != 'cultist']:
                     await reply(message, "You can't kill another wolf.")
                 elif player in [x for x in list(session[1].keys()) if not session[1][x][0]]:
                     await reply(message, "Player **" + get_player(player) + "** is dead!")
@@ -629,11 +637,40 @@ async def cmd_give(message, parameters):
             else:        
                 await reply(message, "Could not find player " + parameters)
 
-async def cmd_rules(message, parameters):
-    pass
-
 async def cmd_info(message, parameters):
-    pass
+    msg = "In Werewolf, there are two teams, village and wolves. The villagers try to get rid of all of the wolves, and the wolves try to kill all of the villagers.\n"
+    msg += "There are two phases, night and day. During night, the wolf/wolves choose a target to kill, and some special village roles like seer perform their actions. "
+    msg += "During day, the village discusses everything and chooses someone to lynch. "
+    msg += "Once you die, you can't talk in the lobby channel but you can discuss the game with the spectators in #spectator-chat.\n\n"
+    msg += "To join a game, use `{0}join`. If you cannot chat in #lobby, then either a game is ongoing or you are dead.\n"
+    msg += "For a list of roles, use the command `{0}roles`. For information on a particular role, use `{0}role role`. For statistics on the current game, use `{0}stats`. "
+    msg += "For a list of commands, use `{0}list`. For help on a command, use `{0}help command`. To see the in-game time, use `{0}time`.\n\n"
+    msg += "Please let belungawhale know about any bugs you might find."
+    await reply(message, msg.format(BOT_PREFIX))
+
+async def cmd_notify(message, parameters):
+    if not WEREWOLF_NOTIFY_ROLE:
+        await reply(message, "Error: A " + WEREWOLF_NOTIFY_ROLE_NAME + " role does not exist. Please let an admin know.")
+        return
+    member = client.get_server(WEREWOLF_SERVER).get_member(message.author.id)
+    if not member:
+        await reply(message, "You are not in the server!")
+    has_role = (WEREWOLF_NOTIFY_ROLE in member.roles)
+    if parameters == '':
+        has_role = not has_role
+    elif parameters in ['true', '+', 'yes']:
+        has_role = True
+    elif parameters in ['false', '-', 'no']:
+        has_role = False
+    else:
+        await reply(message, commands['notify'][2].format(BOT_PREFIX))
+        return
+    if has_role:
+        await client.add_roles(member, WEREWOLF_NOTIFY_ROLE)
+        await reply(message, "You will be notified by @" + WEREWOLF_NOTIFY_ROLE.name + ".")
+    else:
+        await client.remove_roles(member, WEREWOLF_NOTIFY_ROLE)
+        await reply(message, "You will not be notified by @" + WEREWOLF_NOTIFY_ROLE.name + ".")    
 
 ######### END COMMANDS #############
 
@@ -807,6 +844,8 @@ def get_player(string):
     users = []
     discriminators = []
     nicks = []
+    users_contains = []
+    nicks_contains = []
     for player in list(session[1].keys()):
         if string == player.lower() or string.strip('<@!>') == player:
             return player
@@ -816,8 +855,12 @@ def get_player(string):
                 users.append(player)
             if string.strip('#') == member.discriminator:
                 discriminators.append(player)
-            if member.display_name.startswith(string):
+            if member.display_name.lower().startswith(string):
                 nicks.append(player)
+            if string in member.name.lower():
+                users_contains.append(player)
+            if string in member.display_name.lower():
+                nicks_contains.append(string)
         elif get_player(player).lower().startswith(string):
             users.append(player)
     if len(users) == 1:
@@ -826,6 +869,10 @@ def get_player(string):
         return discriminators[0]
     if len(nicks) == 1:
         return nicks[0]
+    if len(users_contains) == 1:
+        return users_contains[0]
+    if len(nicks_contains) == 1:
+        return nicks_contains[0]
     return None
 
 async def wolfchat(message):
@@ -895,12 +942,12 @@ async def run_game(message):
                                 temp_players.append('**' + get_name(plr) + '** (' + plr + ') (**cursed**)')
                             else:
                                 temp_players.append('**' + get_name(plr) + '** (' + plr + ')')
-                        msg += "Available targets: " + ', '.join(temp_players).rstrip(', ') + '\n'
+                        msg += "Living players: " + ', '.join(temp_players).rstrip(', ') + '\n'
                     elif role == 'shaman':
                         totem = session[1][player][2]
                         msg += "You have the **{0}**. {1}".format(totem.replace('_', ' '), totems[totem]) + '\n'
                     if role in ['seer', 'shaman']:
-                        msg += "Available targets: " + living_players + '\n'
+                        msg += "Living players: " + living_players + '\n'
                     if msg != '':
                         await client.send_message(member, msg)
                 except discord.Forbidden:
@@ -1135,6 +1182,8 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'time' : [cmd_time, [0, 0], "```\n{0}time takes no arguments\n\nChecks in-game time.```"],
             't' : [cmd_time, [0, 0], "```\nAlias for {0}time.```"],
             'give' : [cmd_give, [2, 0], "```\n{0}give <player>\n\nIf you are a shaman, gives your totem to <player>. You can see your totem by using `myrole` in pm.```"],
+            'info' : [cmd_info, [0, 0], "```\n{0}info takes no arguments\n\nGives information on how the game works.```"],
+            'notify' : [cmd_notify, [0, 0], "```\n{0}notify [<true|false>]\n\nGives or take the " + WEREWOLF_NOTIFY_ROLE_NAME + " role.```"],
             'test' : [cmd_test, [1, 0], "test"]}
 
 COMMANDS_FOR_ROLE = {'see' : 'seer',

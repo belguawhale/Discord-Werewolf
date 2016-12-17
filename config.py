@@ -6,4 +6,5 @@ DEBUG_CHANNEL = 'debug channel id (for all your errors and debug stuff)'
 WEREWOLF_SERVER = 'id of server the bot is running on'
 PLAYERS_ROLE_NAME = 'Players'
 ADMINS_ROLE_NAME = 'Admins'
+WEREWOLF_NOTIFY_ROLE_NAME = 'Werewolf Notify'
 ADMINS = ['admin id', 'admin 2 id', 'etc.']
