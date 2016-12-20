@@ -15,6 +15,7 @@ session = [False, {}, False, [0, 0], [timedelta(0), timedelta(0)]]
 PLAYERS_ROLE = None
 ADMINS_ROLE = None
 WEREWOLF_NOTIFY_ROLE = None
+ratelimit_dict = {}
 random.seed(datetime.now())
 ################### END INIT ######################
 
@@ -51,9 +52,12 @@ async def on_ready():
 
 @client.event
 async def on_message(message):
-    if message.author.id in [client.user.id] or not client.get_server(WEREWOLF_SERVER).get_member(message.author.id):
+    if message.author.id in [client.user.id] + IGNORE_LIST or not client.get_server(WEREWOLF_SERVER).get_member(message.author.id):
+        if not (message.author.id in ADMINS or message.author.id == OWNER_ID):
+            return
+    if await rate_limit(message):
         return
-    #print(message.content.strip())
+
     if message.channel.is_private:
         await log(0, 'pm from ' + message.author.name + ' (' + message.author.id + '): ' + message.content)
         if session[0] and message.author.id in session[1].keys():
@@ -670,7 +674,54 @@ async def cmd_notify(message, parameters):
         await reply(message, "You will be notified by @" + WEREWOLF_NOTIFY_ROLE.name + ".")
     else:
         await client.remove_roles(member, WEREWOLF_NOTIFY_ROLE)
-        await reply(message, "You will not be notified by @" + WEREWOLF_NOTIFY_ROLE.name + ".")    
+        await reply(message, "You will not be notified by @" + WEREWOLF_NOTIFY_ROLE.name + ".")
+
+async def cmd_ignore(message, parameters):
+    parameters = ' '.join(message.content.strip().split(' ')[1:])
+    parameters = parameters.strip()
+    global IGNORE_LIST
+    if parameters == '':
+        await reply(message, commands['ignore'][2].format(BOT_PREFIX))
+    else:
+        action = parameters.split(' ')[0].lower()
+        target = ' '.join(parameters.split(' ')[1:])
+        member_by_id = client.get_server(WEREWOLF_SERVER).get_member(target.strip('<@!>'))
+        member_by_name = client.get_server(WEREWOLF_SERVER).get_member_named(target)
+        member = None
+        if member_by_id:
+            member = member_by_id
+        elif member_by_name:
+            member = member_by_name
+        if action not in ['+', 'add', '-', 'remove', 'list']:
+            await reply(message, "Error: invalid flag `" + action + "`. Supported flags are add, remove, list")
+            return
+        if not member and action != 'list':
+            await reply(message, "Error: could not find target " + target)
+            return
+        if action in ['+', 'add']:
+            if member.id in IGNORE_LIST:
+                await reply(message, member.name + " is already in the ignore list!")
+            else:
+                IGNORE_LIST.append(member.id)
+                await reply(message, member.name + " was added to the ignore list.")
+        elif action in ['-', 'remove']:
+            if member.id in IGNORE_LIST:
+                IGNORE_LIST.remove(member.id)
+                await reply(message, member.name + " was removed from the ignore list.")
+            else:
+                await reply(message, member.name + " is not in the ignore list!")
+        elif action == 'list':
+            if len(IGNORE_LIST) == 0:
+                await reply(message, "The ignore list is empty.")
+            else:
+                msg_dict = {}
+                for ignored in IGNORE_LIST:
+                    member = client.get_server(WEREWOLF_SERVER).get_member(ignored)
+                    msg_dict[ignored] = member.name if member else "<user not in server with id " + ignored + ">"
+                await reply(message, str(len(IGNORE_LIST)) + " ignored users:\n```\n" + '\n'.join([x + " (" + msg_dict[x] + ")" for x in list(msg_dict.keys())]) + "```")
+        else:
+            await reply(message, commands['ignore'][2].format(BOT_PREFIX))
+        
 
 ######### END COMMANDS #############
 
@@ -860,7 +911,7 @@ def get_player(string):
             if string in member.name.lower():
                 users_contains.append(player)
             if string in member.display_name.lower():
-                nicks_contains.append(string)
+                nicks_contains.append(player)
         elif get_player(player).lower().startswith(string):
             users.append(player)
     if len(users) == 1:
@@ -1140,6 +1191,40 @@ async def run_game(message):
         win_msg = await win_condition()
         await end_game(win_msg[1])
 
+async def rate_limit(message):
+    if not (message.channel.is_private or message.content.startswith(BOT_PREFIX)) or message.author.id in ADMINS or message.author.id == OWNER_ID:
+        return False
+    global ratelimit_dict
+    global IGNORE_LIST
+    if message.author.id not in ratelimit_dict.keys():
+        ratelimit_dict[message.author.id] = 1
+    else:
+        ratelimit_dict[message.author.id] += 1
+    if ratelimit_dict[message.author.id] > IGNORE_THRESHOLD:
+        if not message.author.id in IGNORE_LIST:
+            IGNORE_LIST.append(message.author.id)
+            await log(1, message.author.name + " (" + message.author.id + ") was added to the ignore list for rate limiting.")
+        try:
+            await reply(message, "You've used {0} commands in the last {1} seconds; I will ignore you from now on.".format(IGNORE_THRESHOLD, TOKEN_RESET))
+        except discord.Forbidden:
+            await client.send_message(client.get_channel(GAME_CHANNEL), message.author.mention +
+                                      " used {0} commands in the last {1} seconds and will be ignored from now on.".format(IGNORE_THRESHOLD, TOKEN_RESET))
+        finally:
+            return True
+    if message.author.id in IGNORE_LIST or ratelimit_dict[message.author.id] > TOKENS_GIVEN:
+        if ratelimit_dict[message.author.id] > TOKENS_GIVEN:
+            await log(1, "Ignoring message from " + message.author.name + " (" + message.author.id + "): `" + message.content + "` since no tokens remaining")
+        return True
+    return False
+
+async def do_rate_limit_loop():
+    await client.wait_until_ready()
+    global ratelimit_dict
+    while not client.is_closed:
+        for user in list(ratelimit_dict.keys()):
+            ratelimit_dict[user] = 0
+        await asyncio.sleep(TOKEN_RESET)
+
 ############## POST-DECLARATION STUFF ###############
 # {command name : [function, permissions [in channel, in pm], description]}
 commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no arguments\n\nShuts down the bot. Owner-only.```"],
@@ -1184,6 +1269,7 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'give' : [cmd_give, [2, 0], "```\n{0}give <player>\n\nIf you are a shaman, gives your totem to <player>. You can see your totem by using `myrole` in pm.```"],
             'info' : [cmd_info, [0, 0], "```\n{0}info takes no arguments\n\nGives information on how the game works.```"],
             'notify' : [cmd_notify, [0, 0], "```\n{0}notify [<true|false>]\n\nGives or take the " + WEREWOLF_NOTIFY_ROLE_NAME + " role.```"],
+            'ignore' : [cmd_ignore, [2, 1], "```\n{0}ignore <add|remove|list> <user>\n\nAdds or removes <user> from the ignore list, or outputs the ignore list.```"],
             'test' : [cmd_test, [1, 0], "test"]}
 
 COMMANDS_FOR_ROLE = {'see' : 'seer',
@@ -1228,4 +1314,5 @@ ROLES_SEEN_VILLAGER = ['villager', 'seer', 'traitor', 'shaman', 'cultist']
 ROLES_SEEN_WOLF = ['wolf', 'cursed']
 
 ########### END POST-DECLARATION STUFF #############
+client.loop.create_task(do_rate_limit_loop())
 client.run(TOKEN)

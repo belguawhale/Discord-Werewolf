@@ -8,3 +8,7 @@ PLAYERS_ROLE_NAME = 'Players'
 ADMINS_ROLE_NAME = 'Admins'
 WEREWOLF_NOTIFY_ROLE_NAME = 'Werewolf Notify'
 ADMINS = ['admin id', 'admin 2 id', 'etc.']
+IGNORE_LIST = []
+TOKENS_GIVEN = 5
+TOKEN_RESET = 10
+IGNORE_THRESHOLD = 7
