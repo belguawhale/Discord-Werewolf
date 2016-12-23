@@ -464,7 +464,7 @@ async def cmd_see(message, parameters):
                 if player == message.author.id:
                     await reply(message, "Using your power on yourself would be a waste.")
                 elif player in [x for x in list(session[1].keys()) if not session[1][x][0]]:
-                    await reply(message, "Player **" + get_player(player) + "** is dead!")
+                    await reply(message, "Player **" + get_name(player) + "** is dead!")
                 else:
                     session[1][message.author.id][2] = player
                     # (SAVE FOR DETECTIVE) await reply(message, "You have a vision... in your vision you see that **" + get_name(player) + "** is a **" + session[1][player][1] + "**!")
@@ -505,7 +505,7 @@ async def cmd_kill(message, parameters):
                 elif player in [x for x in list(session[1].keys()) if roles[session[1][x][1]][0] == 'wolf' and session[1][x][1] != 'cultist']:
                     await reply(message, "You can't kill another wolf.")
                 elif player in [x for x in list(session[1].keys()) if not session[1][x][0]]:
-                    await reply(message, "Player **" + get_player(player) + "** is dead!")
+                    await reply(message, "Player **" + get_name(player) + "** is dead!")
                 else:
                     session[1][message.author.id][2] = player
                     await reply(message, "You have chosen to kill **" + get_name(player) + "**.")
@@ -521,15 +521,21 @@ async def cmd_lynch(message, parameters):
         vote_dict = {}
         for player in list(session[1].keys()):
             if session[1][player][2] in vote_dict:
-                vote_dict[session[1][player][2]].append(get_name(player) + ' (' + player + ')')
+                #vote_dict[session[1][player][2]].append(get_name(player) + ' (' + player + ')')
+                vote_dict[session[1][player][2]].append(player)
             elif session[1][player][2] != '':
-                vote_dict[session[1][player][2]] = [get_name(player) + ' (' + player + ')']
+                #vote_dict[session[1][player][2]] = [get_name(player) + ' (' + player + ')']
+                vote_dict[session[1][player][2]] = [player]
+            if 'influence_totem' in session[1][player][4] and session[1][player][2] not in ['']:
+                print(str(vote_dict))
+                vote_dict[session[1][player][2]].append(player)
+            
         if vote_dict == {}:
             reply_msg = "No one has cast a vote to lynch yet. Do `{}lynch <player>` in #{} to lynch <player>. ".format(BOT_PREFIX, client.get_channel(GAME_CHANNEL).name)
             reply_msg += "**{}** votes are required to lynch.".format(str(int(len([x for x in list(session[1].keys()) if session[1][x][0]]) / 2) + 1))
         else:
             for voted in vote_dict.keys():
-                reply_msg += get_name(voted) + ' (' + voted + ') (' + str(len(vote_dict[voted])) + " votes): " + ', '.join(vote_dict[voted]).rstrip(", ") + "\n"
+                reply_msg += get_name(voted) + ' (' + voted + ') (' + str(len(vote_dict[voted])) + " votes): " + ', '.join(['{} ({})'.format(get_name(x), x) for x in vote_dict[voted]]) + "\n"
             reply_msg += "```"
         await reply(message, reply_msg)
     else:
@@ -542,7 +548,7 @@ async def cmd_lynch(message, parameters):
             else:
                 session[1][message.author.id][2] = to_lynch
                 await reply(message, "You have voted to lynch **" + get_name(to_lynch) + "**.")
-                await log(0, "{0} ({1}) LYNCH {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
+                await log(0, "{0} ({1}) LYNCH {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(to_lynch), to_lynch))
         else:
             await reply(message, "Could not find player " + parameters)
             
@@ -992,7 +998,7 @@ async def player_idle(message):
             msg = await client.wait_for_message(author=message.author, channel=client.get_channel(GAME_CHANNEL), timeout=60, check=check)
             if msg == None and message.author.id in session[1].keys() and session[0] and session[1][message.author.id][0]:
                 await client.send_message(client.get_channel(GAME_CHANNEL), "**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead. "
-                                                                            "The survivors bury the **" + ' '.join(session[1][message.author.id][3]) + ' ' + session[1][message.author.id][1] + '**.')
+                                          "The survivors bury the **" + ' '.join([x for x in session[1][message.author.id][3] if x != 'cursed']) + ' ' + session[1][message.author.id][1] + '**.')
                 session[1][message.author.id][0] = False
                 await client.remove_roles(client.get_server(WEREWOLF_SERVER).get_member(message.author.id), PLAYERS_ROLE)
 
@@ -1138,10 +1144,11 @@ async def run_game(message):
             member = client.get_server(WEREWOLF_SERVER).get_member(player)
             if member:
                 await client.remove_roles(member, PLAYERS_ROLE)
-            session[1][player][0] = False
 
         killed_msg = ''
 
+        killed_temp = killed_players[:]
+        
         if protect_totemed != []:
             for protected in protect_totemed:
                 killed_msg += "**{0}** was attacked last night, but their totem emitted a brilliant flash of light, blinding their attacker and allowing them to escape.\n".format(
@@ -1177,6 +1184,9 @@ async def run_game(message):
             else:
                 await client.send_message(client.get_channel(GAME_CHANNEL), "**" + "**, **".join([get_name(x) for x in totem_holders[:-1]]) + "**, and **" + get_name(totem_holders[-1]) + "** are in possession of a mysterious totem...")
 
+        for player in killed_temp:
+            session[1][player][0] = False
+        
         for player in list(session[1].keys()):
             session[1][player][2] = ''
 
@@ -1194,6 +1204,8 @@ async def run_game(message):
                     vote_dict[session[1][player][2]] += 1
                 elif session[1][player][2] not in ['', 'leave']:
                     vote_dict[session[1][player][2]] = 1
+                if 'influence_totem' in session[1][player][4] and session[1][player][2] not in ['']:
+                    vote_dict[session[1][player][2]] += 1
             if vote_dict != {}:
                 max_votes = max([vote_dict[x] for x in vote_dict])
                 if max_votes >= int(len([x for x in list(session[1].keys()) if session[1][x][0]]) / 2) + 1:
@@ -1246,7 +1258,7 @@ async def run_game(message):
 ##            if leave_players != []:
 ##                await client.send_message(client.get_channel(GAME_CHANNEL), "**" + "**, **".join([get_name(x) for x in leave_players]).rstrip("**, **") + "** spontaneously combusted.")
             for player in list(session[1].keys()):
-                session[1][player][4][:] = [x for x in session[1][player][4] if x != 'revealing_totem']
+                session[1][player][4][:] = [x for x in session[1][player][4] if x != 'revealing_totem' and x != 'influence_totem']
                 session[1][player][2] = ''
     if session[0]:
         win_msg = await win_condition()
@@ -1376,7 +1388,8 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
                    [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0]]}
 totems = {'death_totem' : 'The player who is given this totem will die tonight.',
           'protection_totem': 'The player who is given this totem is protected from dying tonight.',
-          'revealing_totem': 'If the player who is given this totem is lynched, their role is revealed to everyone instead of them dying.'}
+          'revealing_totem': 'If the player who is given this totem is lynched, their role is revealed to everyone instead of them dying.',
+          'influence_totem': 'Votes by the player who is given this totem count twice.'}
 ROLES_SEEN_VILLAGER = ['villager', 'seer', 'traitor', 'shaman', 'cultist']
 ROLES_SEEN_WOLF = ['wolf', 'cursed']
 

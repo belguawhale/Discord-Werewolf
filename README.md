@@ -9,6 +9,10 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+12/22/2016 - Fixed cursed villager being displayed on idle; Fixed a small visual bug with seeing/killing dead players; Added influence totem!
+
+12/21/2016 - Fixed a bug with logging lynch (this is what happens when you copy paste)
+
 12/20/2016 - Added messages for death and protection totems taking effect; Added a -force flag to !fstop to forcibly stop the game if !fstop gives an error; Added some more debug messages; Wolf can now retract kills; Fixed a bug where you could still join past MAX_PLAYERS
 
 12/19/2016 - Fixed a stupid bug where trying to lynch using the middle of a nickname would try lynching that exact string, not the player; Added rate limiting users and the ability to ignore users; admins can use the !ignore command
