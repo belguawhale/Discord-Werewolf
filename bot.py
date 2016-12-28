@@ -11,11 +11,16 @@ from settings import *
 
 ################## START INIT #####################
 client = discord.Client()
-session = [False, {}, False, [0, 0], [timedelta(0), timedelta(0)]]
+session = [False, {}, False, [0, 0], [timedelta(0), timedelta(0)], 0]
 PLAYERS_ROLE = None
 ADMINS_ROLE = None
 WEREWOLF_NOTIFY_ROLE = None
 ratelimit_dict = {}
+pingif_dict = {}
+notify_me = []
+with open(NOTIFY_FILE, 'a+') as notify_file:
+    notify_file.seek(0)
+    notify_me = notify_file.read().split(',')
 random.seed(datetime.now())
 ################### END INIT ######################
 
@@ -156,6 +161,8 @@ async def cmd_join(message, parameters):
     if message.author.id in list(session[1].keys()):
         await reply(message, "You are already playing!")
     else:
+        if len(session[1].keys()) == 0:
+            client.loop.create_task(game_start_timeout_loop())
         #                            alive, role, action, [templates], [other]
         session[1][message.author.id] = [True, '', '', [], []]
         await client.send_message(message.channel, "**" + message.author.name + "** joined the game.")
@@ -583,13 +590,13 @@ async def cmd_coin(message, parameters):
 
 async def cmd_admins(message, parameters):
     # await reply(message, 'Available admins: **' + '**, **'.join([client.get_server(WEREWOLF_SERVER).get_member(x).name for x in ADMINS if client.get_server(WEREWOLF_SERVER).get_member(x)]).rstrip("**, **") + "**")
-    available = []
-    for admin in ADMINS:
-        admin_member = client.get_server(WEREWOLF_SERVER).get_member(admin)
-        if admin_member:
-            if admin_member.status in [discord.Status.online, discord.Status.idle]:
-                available.append(admin_member)
-    await reply(message, 'Available admins: ' + ', '.join([x.mention for x in available]).rstrip(', '))
+##    available = [x for x in ADMINS if is_online(x)]
+##    for admin in ADMINS:
+##        admin_member = client.get_server(WEREWOLF_SERVER).get_member(admin)
+##        if admin_member:
+##            if admin_member.status in [discord.Status.online, discord.Status.idle]:
+##                available.append(admin_member)
+    await reply(message, 'Available admins: ' + ', '.join(['<@{}>'.format(x) for x in ADMINS if is_online(x)]))
 
 async def cmd_fday(message, parameters):
     if session[0] and not session[2]:
@@ -659,6 +666,12 @@ async def cmd_time(message, parameters):
             timeofday = 'nighttime'
             sunstate = 'sunrise'
         await reply(message, "It is now **{0}**. There is **{1:02d}:{2:02d}** until {3}.".format(timeofday, seconds // 60, seconds % 60, sunstate))
+    else:
+        if len(session[1].keys()) > 0:
+            timeleft = GAME_START_TIMEOUT - (datetime.now() - session[5]).seconds
+            await reply(message, "There is **{0:02d}:{1:02d}** left to start the game until it will be automatically cancelled. "
+                                 "GAME_START_TIMEOUT is currently set to **{2:02d}:{3:02d}**.".format(
+                                     timeleft // 60, timeleft % 60, GAME_START_TIMEOUT // 60, GAME_START_TIMEOUT % 60))              
 
 async def cmd_give(message, parameters):
     if not session[0] or session[1][message.author.id][1] != 'shaman' or not session[1][message.author.id][0] or session[2]:
@@ -696,7 +709,7 @@ async def cmd_info(message, parameters):
     msg += "Please let belungawhale know about any bugs you might find."
     await reply(message, msg.format(BOT_PREFIX))
 
-async def cmd_notify(message, parameters):
+async def cmd_notify_role(message, parameters):
     if not WEREWOLF_NOTIFY_ROLE:
         await reply(message, "Error: A " + WEREWOLF_NOTIFY_ROLE_NAME + " role does not exist. Please let an admin know.")
         return
@@ -711,7 +724,7 @@ async def cmd_notify(message, parameters):
     elif parameters in ['false', '-', 'no']:
         has_role = False
     else:
-        await reply(message, commands['notify'][2].format(BOT_PREFIX))
+        await reply(message, commands['notify_role'][2].format(BOT_PREFIX))
         return
     if has_role:
         await client.add_roles(member, WEREWOLF_NOTIFY_ROLE)
@@ -767,6 +780,47 @@ async def cmd_ignore(message, parameters):
             await reply(message, commands['ignore'][2].format(BOT_PREFIX))
         await log(1, "{0} ({1}) used ignore {2}".format(message.author.name, message.author.id, parameters))
         
+async def cmd_pingif(message, parameters):
+    global pingif_dict
+    if parameters == '':
+        if message.author.id in pingif_dict.keys():
+            await reply(message, "You will be notified when there are at least **{}** players.".format(pingif_dict[message.author.id]))
+        else:
+            await reply(message, "You have not set a pingif yet. `{}pingif <number of players>`".format(BOT_PREFIX))
+    elif parameters.isdigit():
+        num = int(parameters)
+        if num in range(MIN_PLAYERS, MAX_PLAYERS + 1):
+            pingif_dict[message.author.id] = num
+            await reply(message, "You will be notified when there are at least **{}** players.".format(pingif_dict[message.author.id]))
+        else:
+            await reply(message, "Please enter a number between {} and {} players.".format(MIN_PLAYERS, MAX_PLAYERS))
+    else:
+        await reply(message, "Please enter a valid number of players to be notified at.")
+
+async def cmd_online(message, parameters):
+    members = [x.id for x in message.server.members]
+    online = ["<@{}>".format(x) for x in members if is_online(x)]
+    await reply(message, "PING! {}".format(''.join(online)))
+
+async def cmd_notify(message, parameters):
+    notify = message.author.id in notify_me
+    if parameters == '':
+        online = ["<@{}>".format(x) for x in notify_me if is_online(x)]
+        await reply(message, "PING! {}".format(''.join(online)))
+    elif parameters in ['true', '+', 'yes']:
+        if notify:
+            await reply(message, "You are already in the notify list.")
+            return
+        notify_me.append(message.author.id)
+        await reply(message, "You will be notified by {}notify.".format(BOT_PREFIX))
+    elif parameters in ['false', '-', 'no']:
+        if not notify:
+            await reply(message, "You are not in the notify list.")
+            return
+        notify_me.remove(message.author.id)
+        await reply(message, "You will not be notified by {}notify.".format(BOT_PREFIX))
+    else:
+        await reply(message, commands['notify'][2].format(BOT_PREFIX))        
 
 ######### END COMMANDS #############
 
@@ -1001,6 +1055,13 @@ async def player_idle(message):
                                           "The survivors bury the **" + ' '.join([x for x in session[1][message.author.id][3] if x != 'cursed']) + ' ' + session[1][message.author.id][1] + '**.')
                 session[1][message.author.id][0] = False
                 await client.remove_roles(client.get_server(WEREWOLF_SERVER).get_member(message.author.id), PLAYERS_ROLE)
+
+def is_online(user_id):
+    member = client.get_server(WEREWOLF_SERVER).get_member(user_id)
+    if member:
+        if member.status in [discord.Status.online, discord.Status.idle]:
+            return True
+    return False
 
 async def run_game(message):
     session[0] = True
@@ -1298,6 +1359,32 @@ async def do_rate_limit_loop():
             ratelimit_dict[user] = 0
         await asyncio.sleep(TOKEN_RESET)
 
+async def game_start_timeout_loop():
+    session[5] = datetime.now()
+    while not session[0] and len(session[1].keys()) > 0 and datetime.now() - session[5] < timedelta(seconds=GAME_START_TIMEOUT):
+        await asyncio.sleep(0.1)
+    if not session[0] and len(session[1].keys()) > 0:
+        await client.send_message(client.get_channel(GAME_CHANNEL), "{0}, the game has taken too long to start and has been cancelled. "
+                          "If you are still here and would like to start a new game, please do `!join` again.".format(PLAYERS_ROLE.mention))
+        session[0] = False
+        perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
+        perms.send_messages = True
+        await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
+        for player in list(list(session[1].keys())):
+            del session[1][player]
+            member = client.get_server(WEREWOLF_SERVER).get_member(player)
+            if member:
+                await client.remove_roles(member, PLAYERS_ROLE)
+        session[3] = [0, 0]
+        session[4] = [timedelta(0), timedelta(0)]
+
+async def backup_settings_loop():
+    while not client.is_closed:
+        print("BACKING UP SETTINGS")
+        with open(NOTIFY_FILE, 'w') as notify_file:
+            notify_file.write(','.join([x for x in notify_me if x != '']))
+        await asyncio.sleep(BACKUP_INTERVAL)
+
 ############## POST-DECLARATION STUFF ###############
 # {command name : [function, permissions [in channel, in pm], description]}
 commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no arguments\n\nShuts down the bot. Owner-only.```"],
@@ -1342,8 +1429,10 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             't' : [cmd_time, [0, 0], "```\nAlias for {0}time.```"],
             'give' : [cmd_give, [2, 0], "```\n{0}give <player>\n\nIf you are a shaman, gives your totem to <player>. You can see your totem by using `myrole` in pm.```"],
             'info' : [cmd_info, [0, 0], "```\n{0}info takes no arguments\n\nGives information on how the game works.```"],
-            'notify' : [cmd_notify, [0, 0], "```\n{0}notify [<true|false>]\n\nGives or take the " + WEREWOLF_NOTIFY_ROLE_NAME + " role.```"],
+            'notify_role' : [cmd_notify_role, [0, 0], "```\n{0}notify_role [<true|false>]\n\nGives or take the " + WEREWOLF_NOTIFY_ROLE_NAME + " role.```"],
             'ignore' : [cmd_ignore, [1, 1], "```\n{0}ignore <add|remove|list> <user>\n\nAdds or removes <user> from the ignore list, or outputs the ignore list.```"],
+            'notify' : [cmd_notify, [0, 0], "```\n{0}notify [<true|false>]\n\nNotifies all online users who want to be notified, or adds/removes you from the notify list.```"],
+            'online' : [cmd_online, [1, 1], "```\n{0}online takes no arguments\n\nNotifies all online users.```"],
             'test' : [cmd_test, [1, 0], "test"]}
 
 COMMANDS_FOR_ROLE = {'see' : 'seer',
@@ -1395,4 +1484,5 @@ ROLES_SEEN_WOLF = ['wolf', 'cursed']
 
 ########### END POST-DECLARATION STUFF #############
 client.loop.create_task(do_rate_limit_loop())
+client.loop.create_task(backup_settings_loop())
 client.run(TOKEN)

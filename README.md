@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+12/28/2016 - Added timeout before game start; Added a new !notify command to notify online users who have added themselves to the notify list. For backwards compatibility, the old !notify was renamed to !notify_role.
+
 12/22/2016 - Fixed cursed villager being displayed on idle; Fixed a small visual bug with seeing/killing dead players; Added influence totem!
 
 12/21/2016 - Fixed a bug with logging lynch (this is what happens when you copy paste)
