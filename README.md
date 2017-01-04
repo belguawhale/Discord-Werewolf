@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+1/3/2017 - Massive update! Fixed a minor bug where dead wolfteam players would still receive wolfchat; Fixed a minor grammar problem in death totem's message; Influence totem is hidden from !v now; Fixed non-players using see, kill, etc. in pm causing an error; Re-did how roles are displayed from scratch; !stats has colours and is easier to see; Added harlot and traitor at 8p!!!; Added some filler stuff in for everything up to 16p; hopefully it's balanced
+
 12/28/2016 - Added timeout before game start; Added a new !notify command to notify online users who have added themselves to the notify list. For backwards compatibility, the old !notify was renamed to !notify_role.
 
 12/22/2016 - Fixed cursed villager being displayed on idle; Fixed a small visual bug with seeing/killing dead players; Added influence totem!
