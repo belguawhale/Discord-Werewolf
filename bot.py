@@ -479,9 +479,10 @@ async def cmd_stats(message, parameters):
                 if reveal == 'villager':
                     traitorvill -= 1
                     # could be traitor or villager
-                    role_dict['traitor'][0] = max(0, role_dict['traitor'][0] - 1)
-                    if role_dict['traitor'][1] > traitorvill:
-                        role_dict['traitor'][1] = traitorvill
+                    if 'traitor' in role_dict:
+                        role_dict['traitor'][0] = max(0, role_dict['traitor'][0] - 1)
+                        if role_dict['traitor'][1] > traitorvill:
+                            role_dict['traitor'][1] = traitorvill
                         
                     role_dict['villager'][0] = max(0, role_dict['villager'][0] - 1)
                     if role_dict['villager'][1] > traitorvill:
@@ -600,7 +601,7 @@ async def cmd_lynch(message, parameters):
     if parameters == "":
         reply_msg = "Current votes: (**" + str(int(len([x for x in list(session[1].keys()) if session[1][x][0]]) / 2) + 1) + "** votes required to lynch)```\n"
         vote_dict = {}
-        for player in list(session[1].keys()):
+        for player in [x for x in list(session[1].keys()) if session[1][x][0]]:
             if session[1][player][2] in vote_dict:
                 #vote_dict[session[1][player][2]].append(get_name(player) + ' (' + player + ')')
                 vote_dict[session[1][player][2]].append(player)
@@ -1202,7 +1203,7 @@ async def player_idle(message):
             msg = await client.wait_for_message(author=message.author, channel=client.get_channel(GAME_CHANNEL), timeout=60, check=check)
             if msg == None and message.author.id in session[1].keys() and session[0] and session[1][message.author.id][0]:
                 await client.send_message(client.get_channel(GAME_CHANNEL), "**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead. "
-                                          "The survivors bury the **" + get_role(player, 'death') + '**.')
+                                          "The survivors bury the **" + get_role(message.author.id, 'death') + '**.')
                 session[1][message.author.id][0] = False
                 await client.remove_roles(client.get_server(WEREWOLF_SERVER).get_member(message.author.id), PLAYERS_ROLE)
 
@@ -1607,8 +1608,8 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'fday' : [cmd_fday, [1, 2], "```\n{0}fday takes no arguments\n\nForces night to end.```"],
             'fnight' : [cmd_fnight, [1, 2], "```\n{0}fnight takes no arguments\n\nForces day to end.```"],
             'fstart' : [cmd_fstart, [1, 2], "```\n{0}fstart takes no arguments\n\nForces game to start.```"],
-            'frole' : [cmd_frole, [2, 2], "```\n{0}frole <player> <role>\n\nSets <player>'s role to <role>.```"],
-            'force' : [cmd_force, [2, 2], "```\n{0}force <player> <target>\n\nSets <player>'s target flag (session[1][player][2]) to <target>.```"],
+            'frole' : [cmd_frole, [1, 2], "```\n{0}frole <player> <role>\n\nSets <player>'s role to <role>.```"],
+            'force' : [cmd_force, [1, 2], "```\n{0}force <player> <target>\n\nSets <player>'s target flag (session[1][player][2]) to <target>.```"],
             'session' : [cmd_session, [2, 1], "```\n{0}session takes no arguments\n\nReplies with the contents of the session variable in pm for debugging purposes. Admin only.```"],
             'time' : [cmd_time, [0, 0], "```\n{0}time takes no arguments\n\nChecks in-game time.```"],
             't' : [cmd_time, [0, 0], "```\nAlias for {0}time.```"],
