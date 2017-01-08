@@ -165,7 +165,7 @@ async def cmd_join(message, parameters):
             client.loop.create_task(game_start_timeout_loop())
         #                            alive, role, action, [templates], [other]
         session[1][message.author.id] = [True, '', '', [], []]
-        await client.send_message(message.channel, "**" + message.author.name + "** joined the game.")
+        await client.send_message(message.channel, "**" + message.author.name + "** joined the game and raised the number of players to **{}**.".format(len(session[1].keys())))
         await client.add_roles(client.get_server(WEREWOLF_SERVER).get_member(message.author.id), PLAYERS_ROLE)
         await player_idle(message)
 
@@ -185,7 +185,8 @@ async def cmd_leave(message, parameters):
     else:
         if message.author.id in list(session[1].keys()):
             del session[1][message.author.id]
-            await client.send_message(client.get_channel(GAME_CHANNEL), "**" + message.author.name + "** left the game.")
+            await client.send_message(client.get_channel(GAME_CHANNEL), "**" + message.author.name + "** left the game. New player count: **{}**".format(
+                                                                                                    len(session[1].keys())))
             await client.remove_roles(client.get_server(WEREWOLF_SERVER).get_member(message.author.id), PLAYERS_ROLE)
         else:
             await reply(message, "You are not in the game!")
@@ -216,6 +217,7 @@ async def cmd_fjoin(message, parameters):
         join_msg += "**" + join_names[i] + "** was forced to join the game.\n"
         if client.get_server(WEREWOLF_SERVER).get_member(member):
             await client.add_roles(client.get_server(WEREWOLF_SERVER).get_member(member), PLAYERS_ROLE)
+    join_msg += "New player count: **{}**".format(len(session[1].keys()))
     await client.send_message(message.channel, join_msg)
     await log(1, "{0} ({1}) used fjoin {2}".format(message.author.name, message.author.id, parameters))
 
@@ -245,6 +247,8 @@ async def cmd_fleave(message, parameters):
                 leave_msg += "**" + get_name(member) + "** was forced to leave the game.\n"
             if client.get_server(WEREWOLF_SERVER).get_member(member):
                 await client.remove_roles(client.get_server(WEREWOLF_SERVER).get_member(member), PLAYERS_ROLE)
+    if not session[0]:
+        leave_msg += "New player count: **{}**".format(len(session[1].keys()))
     await client.send_message(client.get_channel(GAME_CHANNEL), leave_msg)
     await log(1, "{0} ({1}) used fleave {2}".format(message.author.name, message.author.id, parameters))
     if session[0] and await win_condition() == None:
@@ -297,30 +301,8 @@ async def cmd_fstop(message, parameters):
         await client.send_message(client.get_channel(GAME_CHANNEL), msg)
     else:
         msg += " for reason: `" + parameters + "`."
-
-    role_msg = ""
-    role_dict = {}
-    for role in roles.keys():
-        role_dict[role] = []
-    for player in list(session[1].keys()):
-        if 'traitor' in session[1][player][4]:
-            session[1][player][1] = 'traitor'
-            session[1][player][4].remove('traitor')
-        role_dict[session[1][player][1]].append(get_name(player))
-        if 'cursed' in session[1][player][3]:
-            role_dict['cursed villager'].append(get_name(player))
-    for key in role_dict.keys():
-        value = role_dict[key]
-        if len(value) == 0:
-            pass
-        elif len(value) == 1:
-            role_msg += "The **" + key + "** was **" + value[0] + "**. "
-        elif len(value) == 2:
-            role_msg += "The **" + roles[key][1] + "** were **" + value[0] + "** and **" + value[1] + "**. "
-        else:
-            role_msg += "The **" + roles[key][1] + "** were **" + "**, **".join(value[:-1]) + "**, and **" + value[-1] + "**. "
             
-    await end_game(msg + '\n\n' + role_msg)
+    await end_game(msg + '\n\n' + end_game_stats())
 
 async def cmd_sync(message, parameters):
     for member in client.get_server(WEREWOLF_SERVER).members:
@@ -362,10 +344,10 @@ async def cmd_deop(message, parameters):
 
 async def cmd_role(message, parameters):
     if parameters == "" and not session[0]:
-        await reply(message, "Roles: " + ", ".join(list(roles.keys())).rstrip(', '))
+        await reply(message, "Roles: " + ", ".join(sort_roles(roles.keys())))
     elif parameters == "" and session[0]:
         msg = "**" + str(len(list(session[1].keys()))) + "** players playing:```\n"
-        for role in roles.keys():
+        for role in sort_roles(roles.keys()):
             if roles[role][3][len(list(session[1].keys())) - MIN_PLAYERS] > 0:
                 msg += role + ": " + str(roles[role][3][len(list(session[1].keys())) - MIN_PLAYERS]) + '\n'
         msg += '```'
@@ -375,7 +357,7 @@ async def cmd_role(message, parameters):
     elif parameters.isdigit():
         if int(parameters) in range(MIN_PLAYERS, MAX_PLAYERS + 1):
             msg = "```\n"
-            for role in roles.keys():
+            for role in sort_roles(roles.keys()):
                 if roles[role][3][int(parameters) - MIN_PLAYERS] > 0:
                     msg += role + ": " + str(roles[role][3][int(parameters) - MIN_PLAYERS]) + '\n'
             msg += '```'
@@ -455,8 +437,12 @@ async def cmd_stats(message, parameters):
             if get_role(player, 'role') in ['villager', 'traitor']:
                 traitorvill += 1
             
-        reply_msg += "Total roles: " + ", ".join(sorted([x + ": " + str(roles[x][3][len(session[1].keys()) - MIN_PLAYERS]) for x in roles.keys() if roles[x][3][len(session[1].keys()) - MIN_PLAYERS] > 0])).rstrip(", ") + '\n'
+        #reply_msg += "Total roles: " + ", ".join(sorted([x + ": " + str(roles[x][3][len(session[1].keys()) - MIN_PLAYERS]) for x in roles.keys() if roles[x][3][len(session[1].keys()) - MIN_PLAYERS] > 0])).rstrip(", ") + '\n'
 
+        reply_msg += "Total roles: "
+        total_roles = sort_roles([x for x in roles.keys() if roles[x][3][len(session[1]) - MIN_PLAYERS] > 0])
+        reply_msg += ', '.join(["{}: {}".format(x, roles[x][3][len(session[1]) - MIN_PLAYERS]) for x in total_roles])
+        
         for role in list(role_dict.keys()):
             if role in ['cursed villager']:
                 del role_dict[role]
@@ -492,8 +478,8 @@ async def cmd_stats(message, parameters):
                     role_dict[reveal][0] = max(0, role_dict[reveal][0] - 1)
                     role_dict[reveal][1] = max(0, role_dict[reveal][1] - 1)
         
-        reply_msg += "Current roles: "
-        for role in role_dict.keys():
+        reply_msg += "\nCurrent roles: "
+        for role in sort_roles(role_dict.keys()):
             if role_dict[role][0] == role_dict[role][1]:
                 if role_dict[role][0] == 1:
                     reply_msg += role
@@ -1057,25 +1043,6 @@ async def win_condition():
         win_team = 'no win'
     else:
         return None
-
-    role_msg = ""
-    role_dict = {}
-    for role in roles.keys():
-        role_dict[role] = []
-    for player in list(session[1].keys()):
-        role_dict[session[1][player][1]].append(get_name(player))
-        if 'cursed' in session[1][player][3]:
-            role_dict['cursed villager'].append(get_name(player))
-    for key in role_dict.keys():
-        value = role_dict[key]
-        if len(value) == 0:
-            pass
-        elif len(value) == 1:
-            role_msg += "The **" + key + "** was **" + value[0] + "**. "
-        elif len(value) == 2:
-            role_msg += "The **" + roles[key][1] + "** were **" + value[0] + "** and **" + value[1] + "**. "
-        else:
-            role_msg += "The **" + roles[key][1] + "** were **" + "**, **".join(value[:-1]) + "**, and **" + value[-1] + "**. "
     
     for player in list(session[1].keys()):
         if roles[session[1][player][1]][0] == win_team:
@@ -1088,7 +1055,31 @@ async def win_condition():
         win_msg = "The winners are **" + winners[0] + "** and **" + winners[1] + "**!"
     else:
         win_msg = "The winners are **" + "**, **".join(winners[:-1]) + "**, and **" + winners[-1] + "**!"
-    return [win_team, win_lore + '\n\n' + role_msg + '\n\n' + win_msg]
+    return [win_team, win_lore + '\n\n' + end_game_stats() + '\n\n' + win_msg]
+
+def end_game_stats():
+    role_msg = ""
+    role_dict = {}
+    for role in roles.keys():
+        role_dict[role] = []
+    for player in list(session[1].keys()):
+        if 'traitor' in session[1][player][4]:
+            session[1][player][1] = 'traitor'
+            session[1][player][4].remove('traitor')
+        role_dict[session[1][player][1]].append(get_name(player))
+        if 'cursed' in session[1][player][3]:
+            role_dict['cursed villager'].append(get_name(player))
+    for key in sort_roles(role_dict.keys()):
+        value = role_dict[key]
+        if len(value) == 0:
+            pass
+        elif len(value) == 1:
+            role_msg += "The **" + key + "** was **" + value[0] + "**. "
+        elif len(value) == 2:
+            role_msg += "The **" + roles[key][1] + "** were **" + value[0] + "** and **" + value[1] + "**. "
+        else:
+            role_msg += "The **" + roles[key][1] + "** were **" + "**, **".join(value[:-1]) + "**, and **" + value[-1] + "**. "
+    return role_msg
 
 def get_name(player):
     member = client.get_server(WEREWOLF_SERVER).get_member(player)
@@ -1235,6 +1226,9 @@ async def check_traitor():
                 except discord.Forbidden:
                     pass
         await client.send_message(client.get_channel(GAME_CHANNEL), "**The villagers, during their celebrations, are frightened as they hear a loud howl. The wolves are not gone!**")        
+
+def sort_roles(roles):
+    return [x for x in WOLF_ROLES_ORDERED + VILLAGE_ROLES_ORDERED + NEUTRAL_ROLES_ORDERED + TEMPLATES_ORDERED if x in roles]
 
 async def run_game(message):
     session[0] = True
@@ -1665,6 +1659,10 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
          'harlot' : ['village', 'harlots', "You may spend the night with one player each night by using `visit <player>`. If you visit a victim of a wolf, or visit a wolf, "
                                            "you will die. You may visit yourself to stay home.",
                    [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1]]}
+VILLAGE_ROLES_ORDERED = ['seer', 'shaman', 'harlot', 'villager']
+WOLF_ROLES_ORDERED = ['wolf', 'traitor', 'cultist']
+NEUTRAL_ROLES_ORDERED = []
+TEMPLATES_ORDERED = ['cursed villager']
 totems = {'death_totem' : 'The player who is given this totem will die tonight.',
           'protection_totem': 'The player who is given this totem is protected from dying tonight.',
           'revealing_totem': 'If the player who is given this totem is lynched, their role is revealed to everyone instead of them dying.',
