@@ -11,7 +11,7 @@ from settings import *
 
 ################## START INIT #####################
 client = discord.Client()
-session = [False, {}, False, [0, 0], [timedelta(0), timedelta(0)], 0]
+session = [False, {}, False, [0, 0], [timedelta(0), timedelta(0)], 0, '']
 PLAYERS_ROLE = None
 ADMINS_ROLE = None
 WEREWOLF_NOTIFY_ROLE = None
@@ -31,7 +31,7 @@ async def on_ready():
     print(client.user.id)
     print('------')
     await log(0, 'on_ready triggered!')
-    # [playing : True | False, players : {player id : [alive, role, action, template]}, day?, [datetime night, datetime day], [elapsed night, elapsed day]]
+    # [playing : True | False, players : {player id : [alive, role, action, template]}, day?, [datetime night, datetime day], [elapsed night, elapsed day], first join time]
     for role in client.get_server(WEREWOLF_SERVER).role_hierarchy:
         if role.name == PLAYERS_ROLE_NAME:
             global PLAYERS_ROLE
@@ -163,9 +163,12 @@ async def cmd_join(message, parameters):
     else:
         if len(session[1].keys()) == 0:
             client.loop.create_task(game_start_timeout_loop())
+            await client.send_message(client.get_channel(GAME_CHANNEL), "**{}** has started a game of Werewolf. Type `{p}join` to join. Type `{p}start` to start the game.".format(
+                                            message.author.name, p=BOT_PREFIX))
+        else:
+            await client.send_message(message.channel, "**" + message.author.name + "** joined the game and raised the number of players to **{}**.".format(len(session[1]) + 1))
         #                            alive, role, action, [templates], [other]
         session[1][message.author.id] = [True, '', '', [], []]
-        await client.send_message(message.channel, "**" + message.author.name + "** joined the game and raised the number of players to **{}**.".format(len(session[1].keys())))
         await client.add_roles(client.get_server(WEREWOLF_SERVER).get_member(message.author.id), PLAYERS_ROLE)
         await player_idle(message)
 
@@ -506,9 +509,9 @@ async def cmd_stats(message, parameters):
             await client.send_message(message.channel, str(len(list(session[1].keys()))) + " players in lobby: ```\n" + "\n".join(sorted(formatted_list)) + "```")
 
 async def cmd_revealroles(message, parameters):
-    msg = "```\n"
+    msg = "```diff\n"
     for player in sorted(list(list(session[1].keys()))):
-        msg += get_name(player) + ' (' + player + '): ' + get_role(player, 'actual')
+        msg += "{} ".format('+' if session[1][player][0] else '-') + get_name(player) + ' (' + player + '): ' + get_role(player, 'actual')
         msg += "; action: " + session[1][player][2] + "; other: " + ' '.join(session[1][player][4]) + "\n"
     msg += "```"
     await client.send_message(message.channel, msg)
@@ -585,28 +588,13 @@ async def cmd_lynch(message, parameters):
     if not session[0] or not session[2]:
         return
     if parameters == "":
-        reply_msg = "Current votes: (**" + str(int(len([x for x in list(session[1].keys()) if session[1][x][0]]) / 2) + 1) + "** votes required to lynch)```\n"
-        vote_dict = {}
-        for player in [x for x in list(session[1].keys()) if session[1][x][0]]:
-            if session[1][player][2] in vote_dict:
-                #vote_dict[session[1][player][2]].append(get_name(player) + ' (' + player + ')')
-                vote_dict[session[1][player][2]].append(player)
-            elif session[1][player][2] != '':
-                #vote_dict[session[1][player][2]] = [get_name(player) + ' (' + player + ')']
-                vote_dict[session[1][player][2]] = [player]
-##            if 'influence_totem' in session[1][player][4] and session[1][player][2] not in ['']:
-##                print(str(vote_dict))
-##                vote_dict[session[1][player][2]].append(player)
-            
-        if vote_dict == {}:
-            reply_msg = "No one has cast a vote to lynch yet. Do `{}lynch <player>` in #{} to lynch <player>. ".format(BOT_PREFIX, client.get_channel(GAME_CHANNEL).name)
-            reply_msg += "**{}** votes are required to lynch.".format(str(int(len([x for x in list(session[1].keys()) if session[1][x][0]]) / 2) + 1))
-        else:
-            for voted in vote_dict.keys():
-                reply_msg += get_name(voted) + ' (' + voted + ') (' + str(len(vote_dict[voted])) + " votes): " + ', '.join(['{} ({})'.format(get_name(x), x) for x in vote_dict[voted]]) + "\n"
-            reply_msg += "```"
-        await reply(message, reply_msg)
+        await cmd_votes(message, parameters)
     else:
+        if message.author.id not in session[1]:
+            return
+        if message.channel.is_private:
+            await reply(message, "Please use lynch in channel.")
+            return
         to_lynch = get_player(parameters.split(' ', 1)[0])
         if not to_lynch:
             to_lynch = get_player(parameters)
@@ -619,6 +607,32 @@ async def cmd_lynch(message, parameters):
                 await log(0, "{0} ({1}) LYNCH {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(to_lynch), to_lynch))
         else:
             await reply(message, "Could not find player " + parameters)
+
+async def cmd_votes(message, parameters):
+    if not session[0] or not session[2]:
+        return
+    vote_dict = {'abstain': []}
+    alive_players = [x for x in session[1] if session[1][x][0]]
+    for player in alive_players:
+        if session[1][player][2] in vote_dict:
+            vote_dict[session[1][player][2]].append(player)
+        elif session[1][player][2] != '':
+            vote_dict[session[1][player][2]] = [player]
+    abstainers = vote_dict['abstain']
+    reply_msg = "**{}** players, **{}** votes required to lynch, **{}** players available to vote, **{}** player{} refrained from voting.\n".format(
+        len(alive_players), len(alive_players) // 2 + 1, len(alive_players), len(abstainers), '' if len(abstainers) == 1 else 's')
+    # TODO: Silenced players
+    if len(vote_dict) == 1 and vote_dict['abstain'] == []:
+        reply_msg += "No one has cast a vote yet. Do `{}lynch <player>` in #{} to lynch <player>. ".format(BOT_PREFIX, client.get_channel(GAME_CHANNEL).name)
+    else:
+        reply_msg += "Current votes: ```\n"
+        for voted in [x for x in vote_dict if x != 'abstain']:
+            reply_msg += "{} ({}) ({} vote{}): {}\n".format(
+                get_name(voted), voted, len(vote_dict[voted]), '' if len(vote_dict[voted]) == 1 else 's', ', '.join(['{} ({})'.format(get_name(x), x) for x in vote_dict[voted]]))
+        reply_msg += "{} vote{} to abstain: {}\n".format(
+            len(vote_dict['abstain']), '' if len(vote_dict['abstain']) == 1 else 's', ', '.join(['{} ({})'.format(get_name(x), x) for x in vote_dict['abstain']]))            
+        reply_msg += "```"
+    await reply(message, reply_msg)
             
 async def cmd_retract(message, parameters):
     if not session[0] or message.author.id not in session[1].keys() or not session[1][message.author.id][0] or session[1][message.author.id][2] == '':
@@ -632,9 +646,22 @@ async def cmd_retract(message, parameters):
         await log(0, "{0} ({1}) RETRACT VOTE".format(get_name(message.author.id), message.author.id))
     else:
         if session[1][message.author.id][1] in ['wolf']:
+            if not message.channel.is_private:
+                await client.send_message(message.author, "Please use retract in pm.")
+                return
             session[1][message.author.id][2] = ''
             await reply(message, "You retracted your kill.")
             await log(0, "{0} ({1}) RETRACT KILL".format(get_name(message.author.id), message.author.id))
+
+async def cmd_abstain(message, parameters):
+    if not session[0] or not session[2] or not message.author.id in [x for x in session[1] if session[1][x][0]]:
+        return
+    if session[4][1] == timedelta(0):
+        await client.send_message(client.get_channel(GAME_CHANNEL), "The village may not abstain on the first day.")
+        return
+    session[1][message.author.id][2] = 'abstain'
+    await log(0, "{0} ({1}) ABSTAIN".format(get_name(message.author.id), message.author.id))
+    await client.send_message(client.get_channel(GAME_CHANNEL), "**{}** votes to not lynch anyone today.".format(get_name(message.author.id)))
 
 async def cmd_coin(message, parameters):
     value = random.randint(1,100)
@@ -984,17 +1011,20 @@ async def log(loglevel, text):
     logmsg = levelmsg[loglevel] + str(text)
     await client.send_message(discord.Object(DEBUG_CHANNEL), logmsg)
 
-async def assign_roles():
+async def assign_roles(gamemode):
+    
     massive_role_list = []
-    for role in roles.keys():
-        for i in range(roles[role][3][len(list(list(session[1].keys()))) - MIN_PLAYERS]):
-            massive_role_list.append(role)
-    random.shuffle(massive_role_list)
-    for player in list(session[1].keys()):
-        session[1][player][1] = massive_role_list.pop()
-        if session[1][player][1] == 'cursed villager':
-            session[1][player][1] = 'villager'
-            session[1][player][3].append('cursed')
+
+    if gamemode == 'default':
+        for role in roles.keys():
+            for i in range(roles[role][3][len(list(list(session[1].keys()))) - MIN_PLAYERS]):
+                massive_role_list.append(role)
+        random.shuffle(massive_role_list)
+        for player in list(session[1].keys()):
+            session[1][player][1] = massive_role_list.pop()
+            if session[1][player][1] == 'cursed villager':
+                session[1][player][1] = 'villager'
+                session[1][player][3].append('cursed')
 
 async def end_game(reason):
     if not session[0]:
@@ -1019,6 +1049,7 @@ async def end_game(reason):
             await client.remove_roles(member, PLAYERS_ROLE)
     session[3] = [0, 0]
     session[4] = [timedelta(0), timedelta(0)]
+    session[6] = ''
 
 async def win_condition():
     teams = {'village' : 0, 'wolf' : 0}
@@ -1233,12 +1264,14 @@ def sort_roles(roles):
 async def run_game(message):
     session[0] = True
     session[2] = False
+    session[6] = 'default' # Change for gamemodes later
     perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
     perms.send_messages = False
     await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
-    await client.send_message(client.get_channel(GAME_CHANNEL), PLAYERS_ROLE.mention + ", werewolf game is starting now! All players check their PMs from me for instructions. "
-                                                 "If you did not receive a pm, please let " + client.get_server(WEREWOLF_SERVER).get_member(OWNER_ID).name + " know.")
-    await assign_roles()
+    await client.send_message(client.get_channel(GAME_CHANNEL), PLAYERS_ROLE.mention + ", Welcome to Werewolf, the popular detective/social party game (a theme of Mafia). "
+                              "Using the **{}** game mode.\nAll players check for PMs from me for instructions. "
+                              "If you did not receive a pm, please let {} know.".format(session[6], client.get_server(WEREWOLF_SERVER).get_member(OWNER_ID).name))
+    await assign_roles(session[6])
     await log(0, str(session))
     first_night = True
     # GAME START
@@ -1248,6 +1281,7 @@ async def run_game(message):
             role = session[1][player][1]
             if role == 'shaman':
                 session[1][player][2] = random.choice(list(totems.keys()))
+                await log(0, "{} ({}) HAS {}".format(get_name(player), player, session[1][player][2]))
             if member and session[1][player][0]:
                 try:
                     temp_players = []
@@ -1287,7 +1321,7 @@ async def run_game(message):
                 if session[1][player][0] and session[1][player][1] in ['seer', 'wolf', 'harlot']:
                     end_night = end_night and (session[1][player][2] != '')
                 if session[1][player][0] and session[1][player][1] in ['shaman']:
-                    end_night = end_night and (session[1][player][2] in session[1].keys())
+                    end_night = end_night and (session[1][player][2] in session[1])
             end_night = end_night or (datetime.now() - session[3][0]).total_seconds() > NIGHT_TIMEOUT
             if end_night:
                 session[2] = True
@@ -1446,17 +1480,19 @@ async def run_game(message):
         lynched_player = None
         
         while await win_condition() == None and session[2] and lynched_player == None and session[0]:
-            vote_dict = {}
-            for player in [x for x in session[1].keys() if session[1][x][0]]:
+            vote_dict = {'abstain' : 0}
+            for player in [x for x in session[1] if session[1][x][0]]:
                 if session[1][player][2] in vote_dict:
                     vote_dict[session[1][player][2]] += 1
-                elif session[1][player][2] not in ['', 'leave']:
+                elif session[1][player][2] not in ['']:
                     vote_dict[session[1][player][2]] = 1
                 if 'influence_totem' in session[1][player][4] and session[1][player][2] not in ['']:
                     vote_dict[session[1][player][2]] += 1
             if vote_dict != {}:
+                if vote_dict['abstain'] >= len([x for x in session[1] if session[1][x][0]]) / 2:
+                    lynched_player = 'abstain'
                 max_votes = max([vote_dict[x] for x in vote_dict])
-                if max_votes >= int(len([x for x in list(session[1].keys()) if session[1][x][0]]) / 2) + 1:
+                if max_votes >= len([x for x in session[1] if session[1][x][0]]) // 2 + 1:
                     for voted in vote_dict:
                         if vote_dict[voted] == max_votes:
                             lynched_player = voted
@@ -1466,7 +1502,9 @@ async def run_game(message):
         day_elapsed = datetime.now() - session[3][1]
         session[4][1] += day_elapsed
         if lynched_player:
-            if 'revealing_totem' in session[1][lynched_player][4]:
+            if lynched_player == 'abstain':
+                await client.send_message(client.get_channel(GAME_CHANNEL), "The village has agreed to not lynch anyone today.")
+            elif 'revealing_totem' in session[1][lynched_player][4]:
                 lynched_msg = 'As the villagers prepare to lynch **{0}**, their totem emits a brilliant flash of light! When the villagers are able to see again, '
                 lynched_msg += 'they discover that {0} has escaped! The left-behind totem seems to have taken on the shape of a **{1}**.'
                 lynched_msg = lynched_msg.format(get_name(lynched_player), get_role(lynched_player, 'role'))
@@ -1594,7 +1632,11 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'see' : [cmd_see, [2, 0], "```\n{0}see <player>\n\nIf you are a seer, uses your power to detect <player>'s role.```"],
             'kill' : [cmd_kill, [2, 0], "```\n{0}kill <player>\n\nIf you are a wolf, casts your vote to target <player>.```"],
             'lynch' : [cmd_lynch, [0, 2], "```\n{0}lynch [<player>]\n\nVotes to lynch [<player>] during the day. If no arguments are given, replies with a list of current votes.```"],
-            'retract' : [cmd_retract, [0, 0], "```\n{0}retract takes no arguments\n\nRetracts your vote to lynch or kill```"],
+            'retract' : [cmd_retract, [0, 0], "```\n{0}retract takes no arguments\n\nRetracts your vote to lynch or kill.```"],
+            'votes' : [cmd_votes, [0, 0], "```\n{0}votes takes no arguments\n\nDisplays current votes to lynch.```"],
+            'abstain' : [cmd_abstain, [0, 2], "```\n{0}abstain takes no arguments\n\nRefrain from voting someone today.```"],
+            'abs' : [cmd_abstain, [0, 2], "```\nAlias for {0}abstain.```"],
+            'nl' : [cmd_abstain, [0, 2], "```\nAlias for {0}abstain.```"],
             'v' : [cmd_lynch, [0, 2], "```\nAlias for {0}lynch.```"],
             'r' : [cmd_retract, [0, 0], "```\nAlias for {0}retract.```"],
             'coin' : [cmd_coin, [0, 0], "```\n{0}coin takes no arguments\n\nFlips a coin. Don't use this for decision-making, especially not for life or death situations.```"],
