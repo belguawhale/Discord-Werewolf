@@ -1,0 +1,8 @@
+{
+   'ping':[
+      'Pong!',
+      '**PONG! {0} smashes the ball into {1}\'s face!',
+      'Ping!',
+      '\\*ping\\*. {0} taps the ball, which brushes the net and falls onto {1}\'s side.'
+   ]
+}
