@@ -86,12 +86,8 @@ async def cmd_shutdown(message, parameters):
     await client.logout()
 
 async def cmd_ping(message, parameters):    
-    PING_MSGS = ['Pong!',
-                 '**PONG! ' + client.user.display_name + '** smashes the ball into **' + message.author.name + '**\'s face!',
-                 'Ping!',
-                 '\\*ping\\*. ' + client.user.display_name + ' taps the ball, which brushes the net and falls onto ' + message.author.name + '\'s side.'
-                 ]
-    msg = random.choice(PING_MSGS)
+    PING_MSGS = ['Pong!','**PONG! ' + client.user.display_name + '** smashes the ball into **' + message.author.name + '**\'s face!','Ping!','\\*ping\\*. ' + client.user.display_name + ' taps the ball, which brushes the net and falls onto ' + message.author.name + '\'s side.']
+    msg = random.choice(PING_MSGS[LANGUAGE])
     await reply(message, msg)
 
 async def cmd_eval(message, parameters): 
