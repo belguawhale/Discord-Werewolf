@@ -1,13 +1,13 @@
 {
 	"ping": [
-		"Pong!",
-		"**PONG! {c} smashes the ball into {b}'s face!",
-		"Ping!",
-		"Pling!",
-		"Dink! The ball knocks over {b}'s glass of lemonade.'",
-		"\\*ping\\*. {c} taps the ball, which brushes the net and falls onto {b}'s side.",
-		"Pling! The ball hits {b}'s chest and they dramatically fall over.",
-		"Pong! The ball is launched at the wall, going nowhere near the table."
+		"Ⓟⓞⓝⓖ!",
+		"**ⓅⓄⓃⒼ! {c} ⓢⓜⓐⓢⓗⓔⓢ ⓣⓗⓔ ⓑⓐⓛⓛ ⓘⓝⓣⓞ {b}'ⓢ ⓕⓐⓒⓔ!",
+		"Ⓟⓘⓝⓖ!",
+		"Ⓟⓛⓘⓝⓖ!",
+		"Ⓓⓘⓝⓚ! Ⓣⓗⓔ ⓑⓐⓛⓛ ⓚⓝⓞⓒⓚⓢ ⓞⓥⓔⓡ {b}'ⓢ ⓖⓛⓐⓢⓢ ⓞⓕ ⓛⓔⓜⓞⓝⓐⓓⓔ.'",
+		"\\*ⓟⓘⓝⓖ\\*. {c} ⓣⓐⓟⓢ ⓣⓗⓔ ⓑⓐⓛⓛ, ⓦⓗⓘⓒⓗ ⓑⓡⓤⓢⓗⓔⓢ ⓣⓗⓔ ⓝⓔⓣ ⓐⓝⓓ ⓕⓐⓛⓛⓢ ⓞⓝⓣⓞ {b}'ⓢ ⓢⓘⓓⓔ.",
+		"Ⓟⓛⓘⓝⓖ! Ⓣⓗⓔ ⓑⓐⓛⓛ ⓗⓘⓣⓢ {b}'ⓢ ⓒⓗⓔⓢⓣ ⓐⓝⓓ ⓣⓗⓔⓨ ⓓⓡⓐⓜⓐⓣⓘⓒⓐⓛⓛⓨ ⓕⓐⓛⓛ ⓞⓥⓔⓡ.",
+		"Ⓟⓞⓝⓖ! Ⓣⓗⓔ ⓑⓐⓛⓛ ⓘⓢ ⓛⓐⓤⓝⓒⓗⓔⓓ ⓐⓣ ⓣⓗⓔ ⓦⓐⓛⓛ, ⓖⓞⓘⓝⓖ ⓝⓞⓦⓗⓔⓡⓔ ⓝⓔⓐⓡ ⓣⓗⓔ ⓣⓐⓑⓛⓔ."
 	],
 	"maxplayers": [
 		"The maximum number of players ({m}) have already joined the game.",
@@ -21,9 +21,7 @@
 		"You are not playing, so you cannot start the game! Type `!join` to join the game."
 	],
 	"notplayingleave": [
-		"You are not playing, so you cannot leave the game!",
-		"You cannot leave the game, since you are not playing!",
-		"Since you are not playing, you cannot leave the game!"
+		"You are not playing, so you cannot leave the game!"
 	],
 	"alreadyin": [
 		"You are already playing!",
@@ -34,8 +32,8 @@
 		"**{c}** walked out of the lobby. There are now **{0}** players in the lobby."
 	],
 	"gamestart": [
-		"**{}** has started a game of Werewolf. Type `{p}join` to join. Type `{p}start` to start the game.",
-		"**{}** has started a game of Werewolf. Type `{p}start` to start the game. Type `{p}join` to join."
+    "**{}** ⓗⓐⓢ ⓢⓣⓐⓡⓣⓔⓓ ⓐ ⓖⓐⓜⓔ ⓞⓕ Ⓦⓔⓡⓔⓦⓞⓛⓕ. Ⓣⓨⓟⓔ `{p}ⓙⓞⓘⓝ` ⓣⓞ ⓙⓞⓘⓝ. Ⓣⓨⓟⓔ `{p}ⓢⓣⓐⓡⓣ` ⓣⓞ ⓢⓣⓐⓡⓣ ⓣⓗⓔ ⓖⓐⓜⓔ.",
+		"**{}** ⓗⓐⓢ ⓢⓣⓐⓡⓣⓔⓓ ⓐ ⓖⓐⓜⓔ ⓞⓕ Ⓦⓔⓡⓔⓦⓞⓛⓕ. Ⓣⓨⓟⓔ `{p}ⓢⓣⓐⓡⓣ` ⓣⓞ ⓢⓣⓐⓡⓣ ⓣⓗⓔ ⓖⓐⓜⓔ. Ⓣⓨⓟⓔ `{p}ⓙⓞⓘⓝ` ⓣⓞ ⓙⓞⓘⓝ."
 	],
 	"nokills": [
 		"The villagers discover the dead body of a beloved pet penguin, but lucklily no one was harmed.",
