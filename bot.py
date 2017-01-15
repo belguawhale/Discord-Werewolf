@@ -167,7 +167,7 @@ async def cmd_join(message, parameters):
     else:
         if len(session[1].keys()) == 0:
             client.loop.create_task(game_start_timeout_loop())
-            client.change_presence(status='idle')
+            await client.change_presence(status='idle')
             await client.send_message(client.get_channel(GAME_CHANNEL), random.choice(lang['gamestart']).format(
                                             message.author.name, p=BOT_PREFIX))
         else:
@@ -182,7 +182,7 @@ async def cmd_leave(message, parameters):
         session[1][message.author.id][0] = False
         await client.send_message(client.get_channel(GAME_CHANNEL), random.choice(lang['leavedeath']).format(message.author.name, get_role(message.author.id, 'death')))
         await client.remove_roles(client.get_server(WEREWOLF_SERVER).get_member(message.author.id), PLAYERS_ROLE)
-        client.change_presence(status='online')
+        await client.change_presence(status='online')
         if session[0] and await win_condition() == None:
             await check_traitor()
     else:
@@ -1036,7 +1036,7 @@ async def assign_roles(gamemode):
                 session[1][player][3].append('cursed')
 
 async def end_game(reason):
-    client.change_presence(status='online')
+    await client.change_presence(status='online')
     if not session[0]:
         return
     session[0] = False
@@ -1272,7 +1272,7 @@ def sort_roles(roles):
     return [x for x in WOLF_ROLES_ORDERED + VILLAGE_ROLES_ORDERED + NEUTRAL_ROLES_ORDERED + TEMPLATES_ORDERED if x in roles]
 
 async def run_game(message):
-    client.change_presence(status='dnd')
+    await client.change_presence(status='dnd')
     session[0] = True
     session[2] = False
     session[6] = 'default' # Change for gamemodes later
