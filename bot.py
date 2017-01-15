@@ -95,7 +95,7 @@ async def cmd_shutdown(message, parameters):
 
 async def cmd_ping(message, parameters):
     msg = random.choice(lang['ping']).format(
-        b=client.user.display_name, c=message.author.name)
+        bot_nick=client.user.display_name, client_name=message.author.name)
     await reply(message, msg)
 
 async def cmd_eval(message, parameters):
@@ -160,7 +160,7 @@ async def cmd_join(message, parameters):
     if session[0]:
         return
     if len(list(list(session[1].keys()))) >= MAX_PLAYERS:
-        await reply(message, random.choice(lang['maxplayers']).format(m=MAX_PLAYERS))
+        await reply(message, random.choice(lang['maxplayers']).format(max_players=MAX_PLAYERS))
         return
     if message.author.id in list(session[1].keys()):
         await reply(message, random.choice(lang['alreadyin']).format(c=message.author.name))
@@ -263,7 +263,7 @@ async def cmd_start(message, parameters):
         await reply(message, random.choice(lang['notplayingstart']))
         return
     if len(list(list(session[1].keys()))) < MIN_PLAYERS:
-        await reply(message, random.choice(lang['minplayers']).format(m=MIN_PLAYERS))
+        await reply(message, random.choice(lang['minplayers']).format(min_players=MIN_PLAYERS))
         return
     await run_game(message)
 
@@ -271,7 +271,7 @@ async def cmd_fstart(message, parameters):
     if session[0]:
         return
     if len(list(list(session[1].keys()))) < MIN_PLAYERS:
-        await reply(message, random.choice(lang['minplayers']).format(m=MIN_PLAYERS))
+        await reply(message, random.choice(lang['minplayers']).format(min_players=MIN_PLAYERS))
     else:
         await client.send_message(client.get_channel(GAME_CHANNEL), "**" + message.author.name + "** forced the game to start.")
         await log(1, "{0} ({1}) used fstart".format(message.author.name, message.author.id))
@@ -1528,14 +1528,7 @@ async def run_game(message):
                 await client.send_message(client.get_channel(GAME_CHANNEL), lynched_msg)
                 session[1][lynched_player][4][:] = [x for x in session[1][lynched_player][4] if x != 'revealing_totem']
             else:
-                lynched_msg = random.choice(['The villagers have agreed to lynch **{0}**, a **{1}**.',
-                                             'Reluctantly, the villagers lead **{0}** to the gallows, who is later found to be a **{1}**.',
-                                             'The villagers sacrifice **{0}** to the belunga god, who is satisfied with the **{1}** for now.',
-                                             'For SCIENCE, the villagers throw **{0}** into a volcano. They discover that the melting point of a **{1}** is less than that of lava.',
-                                             'The villagers force **{0}** to play Russian Roulette. The town square is stained with the remains of the **{1}**.',
-                                             'The villagers, after much debate, finally decide on lynching **{0}**, who turned out to be... a **{1}**.',
-                                             'After a prolonged struggle, **{0}** is forced to the gallows, and is discovered after death to be a **{1}**.',
-                                             'The villagers choose to hang **{0}**; however, the rope stretches and breaks, and the ensuing fall kills the **{1}**.'])
+                lynched_msg = random.choice(lang['lynched']).format(lynched_name=get_name(lynched_player),lynched_role=get_role(lynched_player))
                 lynched_msg = lynched_msg.format(get_name(lynched_player), get_role(lynched_player, 'death'))
                 await client.send_message(client.get_channel(GAME_CHANNEL), lynched_msg)
                 session[1][lynched_player][0] = False
@@ -1700,25 +1693,25 @@ COMMANDS_FOR_ROLE = {'see' : 'seer',
 ##                   [0, 0, 0, 0, 1, 0,  1, 1, 1, 1, 1, 1, 2]]}
 #                   4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
 roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. Type `kill <player>` in private message to kill them.",
-                   [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 2, 2, 2]],
+                   [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 2, 2, 2, 2]],
          'villager' : ['village', 'villagers', "Your job is to lynch all of the wolves.",
-                   [2, 3, 3, 2, 2, 3,  3, 4, 5, 5, 5, 5, 5]],
+                   [2, 3, 3, 2, 2, 3,  3, 4, 5, 5, 5, 5, 5, 6]],
          'seer' : ['village', 'seers', "Your job is to detect the wolves; you may have a vision once per night. Type `see <player>` in private message to see their role.",
-                   [1, 1, 1, 1, 1, 1,  1, 1, 1, 2, 2, 2, 2]],
+                   [1, 1, 1, 1, 1, 1,  1, 1, 1, 2, 2, 2, 2, 2]],
          'oracle' : ['village', 'oracles', "Your job is to detect the wolves; you may have a vision once per night. Type `see <player>` in private message to see which side they are on.",
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0]],
+                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 1]],
          'cursed villager' : ['village', 'cursed villagers', "This template is a villager but is seen by the seer as a wolf. Roles normally seen as wolf and the seer cannot be cursed.",
-                   [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2]],
+                   [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2, 2]],
          'shaman' : ['village', 'shamans', "You can select a player to receive a totem each night by using `give <player>`. You may give a totem to yourself, but you may not give the same"
                                            " person a totem two nights in a row. If you do not give the totem to anyone, it will be given to a random player.",
-                   [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2]],
+                   [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2, 2]],
          'cultist' : ['wolf', 'cultists', "Your job is to help the wolves kill all of the villagers.",
-                   [0, 0, 0, 1, 0, 0,  1, 1, 0, 0, 0, 0, 1]],
+                   [0, 0, 0, 1, 0, 0,  1, 1, 0, 0, 0, 0, 1, 2]],
          'traitor' : ['wolf', 'traitors', "You appear as a villager to the seer, but you are part of the wolf team. Once all other wolves die, you will turn into a wolf.",
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1]],
+                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 2]],
          'harlot' : ['village', 'harlots', "You may spend the night with one player each night by using `visit <player>`. If you visit a victim of a wolf, or visit a wolf, "
                                            "you will die. You may visit yourself to stay home.",
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1]]}
+                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1]]}
 VILLAGE_ROLES_ORDERED = ['seer', 'shaman', 'harlot', 'villager', 'oracle']
 WOLF_ROLES_ORDERED = ['wolf', 'traitor', 'cultist']
 NEUTRAL_ROLES_ORDERED = []
