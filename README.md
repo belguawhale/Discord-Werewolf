@@ -9,6 +9,12 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+1/14/2017 - Added support for languages; bot changes status depending on what state the game is (no lobby is Online, join phase is Idle, in game is Do Not Disturb); Spectators can now use !v in pm to view current votes
+
+1/13/2017 - Fixed game start timeout not working
+
+1/11/2017 - Fixed idlewolf not causing traitor to turn
+
 1/10/2017 - You can now use !v in pm; Village can now abstain from voting using !abstain (!abs and !nl are aliases); !v has more information; Added support for gamemodes :wink:; Revealroles now shows alive/dead people; Fixed a stupid off-by-one error with joining
 
 1/8/2017 - Added number of players to !join, !leave; Fixed a bug where traitor would not appear in endgame stats and redid endgame stats; All stats (!stats, endgame) have a consistent ordering now; Fixed a stupid bug that caused win messages to error; Fixed a bug where new player count would show after !fleave during a game

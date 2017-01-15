@@ -1,0 +1,78 @@
+{
+	"ping": [
+		"Pong!",
+		"**PONG! {bot_nick}** smashes the ball into **{author}'s** face!",
+		"Ping!",
+		"Pling!",
+		"Dink! The ball knocks over **{bot_nick}**'s glass of lemonade.",
+		"\\*ping\\*. **{bot_nick}** taps the ball, which brushes the net and falls onto **{author}'s** side.",
+		"Pling! The ball hits **{author}'s** chest and they dramatically fall over.",
+		"Pong! The ball is launched at the wall, going nowhere near the table."
+	],
+	"maxplayers": [
+		"The maximum number of players ({0}) have already joined the game.",
+		"There's no room left for you to join this game. There are already {0} players in this lobby."
+	],
+	"minplayers": [
+		"Please wait until there are at least {0} players.",
+		"You cannot start the game until there are at least {0} players."
+	],
+	"notplayingstart": [
+		"You are not playing, so you cannot start the game! Type `!join` to join the game."
+	],
+	"notplayingleave": [
+		"You cannot leave a game you are not playing!"
+	],
+	"alreadyin": [
+		"You are already playing!",
+		"You are already in!"
+	],
+	"leavelobby": [
+		"**{0}** left the game. There are now **{1}** players in the lobby.",
+		"**{0}** walked out of the lobby. There are now **{1}** players in the lobby.",
+		"**{0}** was shot twice by a hunter, once in the head and once in the heart. Remaining players: **{1}**"
+	],
+	"gamestart": [
+		"**{0}** has started a game of Werewolf. Type `{p}join` to join. Type `{p}start` to start the game.",
+		"**{0}** has started a game of Werewolf. Type `{p}start` to start the game. Type `{p}join` to join."
+	],
+	"nokills": [
+		"The villagers discover the dead body of a beloved pet penguin, but lucklily no one was harmed.",
+		"The villagers discover the dead body of a beloved pet dog, but lucklily no one was harmed.",
+		"The villagers discover the dead body of a beloved pet cat, but lucklily no one was harmed.",
+		"Paw prints and tufts of fur are found circling the village, but everyone seems unharmed."
+	],
+	"lynched": [
+		"The villagers have agreed to lynch **{0}**, a **{1}**.",
+		"The villagers perform surgery to obtain the heart of **{0}**, now known to be a **{1}**. They put it in a plastic cup.",
+		"The villagers perform surgery to obtain the brains of **{0}**, now known to be a **{1}**. They seal it in a glass jar.",
+		"Reluctantly, the villagers lead **{0}** to the gallows, who is later found to be a **{1}**.",
+		"The villagers sacrifice **{0}** to the belunga god, who is satisfied with the **{1}** for now.",
+		"For SCIENCE, the villagers throw **{0}** into a volcano. They discover that the melting point of a **{1}** is less than that of lava.",
+		"The villagers force **{0}** to play Russian Roulette. The town square is stained with the remains of the **{1}**.",
+		"The villagers, after much debate, finally decide on lynching **{0}**, who turned out to be... a **{1}**.",
+		"After a prolonged struggle, **{0}** is forced to the gallows, and is discovered after death to be a **{1}**.",
+		"The villagers choose to hang **{0}**; however, the rope stretches and breaks, and the ensuing fall kills the **{1}**."
+	],
+	"hastotem": [
+		"**{0}** is in possession of a mysterious totem..."
+	],
+	"hastotem2": [
+		"**{0}** and **{1}** are in possession of a mysterious totem..."
+	],
+	"hastotems": [
+		"**{0}**, and **{1}** are in possession of a mysterious totem..."
+	],
+	"leavedeath": [
+		"**{0}** spontaneously combusted. The air smells of freshly burnt **{1}**.",
+		"While wearing a red triangular hat, **{0}**, a **{1}**, was shot dead by a hunter.",
+		"While wearing a yellow square hat, **{0}**, a **{1}**, was rammed by a tank.",
+		"While wearing a blue pentagonal hat, **{0}**, a **{1}**, was destroyed by a giant cannonball.",
+		"While wearing an oversized blue pentagonal hat, **{0}**, a **{1}**, was annihilated by a humongous mortar shell.",
+		"After jumping into a tank, **{0}** drowned. The fish consumed the dead **{1}**'s body.",
+		"**{0}** mysteriously disappeared in the woods. Nobody knows where the **{1}** went."
+	],
+	"firstjoin": [
+		"**{0}** has started a game of Werewolf. Type `{p}join` to join. Type `{p}start` to start the game."
+	]
+}
