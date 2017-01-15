@@ -1,21 +1,21 @@
 {
 	"ping": [
 		"Pong!",
-		"**PONG! {c} smashes the ball into {b}'s face!",
+		"**PONG! {client_name} smashes the ball into {bot_nick}'s face!",
 		"Ping!",
 		"Pling!",
-		"Dink! The ball knocks over {b}'s glass of lemonade.'",
-		"\\*ping\\*. {c} taps the ball, which brushes the net and falls onto {b}'s side.",
-		"Pling! The ball hits {b}'s chest and they dramatically fall over.",
+		"Dink! The ball knocks over {bot_nick}'s glass of lemonade.'",
+		"\\*ping\\*. {client_name} taps the ball, which brushes the net and falls onto {bot_nick}'s side.",
+		"Pling! The ball hits {bot_nick}'s chest and they dramatically fall over.",
 		"Pong! The ball is launched at the wall, going nowhere near the table."
 	],
 	"maxplayers": [
-		"The maximum number of players ({m}) have already joined the game.",
-		"There's no room left for you to join this game. There are already {m} players in this lobby."
+		"The maximum number of players ({max_players}) have already joined the game.",
+		"There's no room left for you to join this game. There are already {max_players} players in this lobby."
 	],
 	"minplayers": [
-		"Please wait until there are at least {m} players.",
-		"You cannot start the game until there are at least {m} players."
+		"Please wait until there are at least {min_players} players.",
+		"You cannot start the game until there are at least {min_players} players."
 	],
 	"notplayingstart": [
 		"You are not playing, so you cannot start the game! Type `!join` to join the game."
@@ -30,8 +30,8 @@
 		"You are already in!"
 	],
 	"leavelobby": [
-		"**{c}** left the game. There are now **{0}** players in the lobby.",
-		"**{c}** walked out of the lobby. There are now **{0}** players in the lobby."
+		"**{client_name}** left the game. There are now **{0}** players in the lobby.",
+		"**{client_name}** walked out of the lobby. There are now **{0}** players in the lobby."
 	],
 	"gamestart": [
 		"**{}** has started a game of Werewolf. Type `{p}join` to join. Type `{p}start` to start the game.",
@@ -44,16 +44,16 @@
 		"Paw prints and tufts of fur are found circling the village, but everyone seems unharmed."
 	],
 	"lynched": [
-		"The villagers have agreed to lynch **{0}**, a **{1}**.",
-		"The villagers perform surgery to obtain the heart of **{0}**, now know to be a **{1}**. They put it in a plastic cup.",
-		"The villagers perform surgery to obtain the brains of **{0}**, now know to be a **{1}**. They seal it in a glass jar.",
-		"Reluctantly, the villagers lead **{0}** to the gallows, who is later found to be a **{1}**.",
-		"The villagers sacrifice **{0}** to the belunga god, who is satisfied with the **{1}** for now.",
-		"For SCIENCE, the villagers throw **{0}** into a volcano. They discover that the melting point of a **{1}** is less than that of lava.",
-		"The villagers force **{0}** to play Russian Roulette. The town square is stained with the remains of the **{1}**.",
-		"The villagers, after much debate, finally decide on lynching **{0}**, who turned out to be... a **{1}**.",
-		"After a prolonged struggle, **{0}** is forced to the gallows, and is discovered after death to be a **{1}**.",
-		"The villagers choose to hang **{0}**; however, the rope stretches and breaks, and the ensuing fall kills the **{1}**."
+		"The villagers have agreed to lynch **{lynched_name}**, a **{lynched_role}**.",
+		"The villagers perform surgery to obtain the heart of **{lynched_name}**, now known to be a **{lynched_role}**. They put it in a plastic cup.",
+		"The villagers perform surgery to obtain the brains of **{lynched_name}**, now known to be a **{lynched_role}**. They seal it in a glass jar.",
+		"Reluctantly, the villagers lead **{lynched_name}** to the gallows, who is later found to be a **{lynched_role}**.",
+		"The villagers sacrifice **{lynched_name}** to the belunga god, who is satisfied with the **{lynched_role}** for now.",
+		"For SCIENCE, the villagers throw **{lynched_name}** into a volcano. They discover that the melting point of a **{lynched_role}** is less than that of lava.",
+		"The villagers force **{lynched_name}** to play Russian Roulette. The town square is stained with the remains of the **{lynched_role}**.",
+		"The villagers, after much debate, finally decide on lynching **{0}**, who turned out to be... a **{lynched_role}**.",
+		"After a prolonged struggle, **{lynched_name}** is forced to the gallows, and is discovered after death to be a **{lynched_role}**.",
+		"The villagers choose to hang **{lynched_name}**; however, the rope stretches and breaks, and the ensuing fall kills the **{lynched_role}**."
 	],
 	"hastotem": [
 		"**{t}** is in possession of a mysterious totem...",
