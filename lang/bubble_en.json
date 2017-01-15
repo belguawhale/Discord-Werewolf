@@ -1,11 +1,11 @@
 {
 	"ping": [
 		"Ⓟⓞⓝⓖ!",
-		"**ⓅⓄⓃⒼ! {c} ⓢⓜⓐⓢⓗⓔⓢ ⓣⓗⓔ ⓑⓐⓛⓛ ⓘⓝⓣⓞ {b}'ⓢ ⓕⓐⓒⓔ!",
+		"**ⓅⓄⓃⒼ! {client_name} ⓢⓜⓐⓢⓗⓔⓢ ⓣⓗⓔ ⓑⓐⓛⓛ ⓘⓝⓣⓞ {b}'ⓢ ⓕⓐⓒⓔ!",
 		"Ⓟⓘⓝⓖ!",
 		"Ⓟⓛⓘⓝⓖ!",
 		"Ⓓⓘⓝⓚ! Ⓣⓗⓔ ⓑⓐⓛⓛ ⓚⓝⓞⓒⓚⓢ ⓞⓥⓔⓡ {b}'ⓢ ⓖⓛⓐⓢⓢ ⓞⓕ ⓛⓔⓜⓞⓝⓐⓓⓔ.'",
-		"\\*ⓟⓘⓝⓖ\\*. {c} ⓣⓐⓟⓢ ⓣⓗⓔ ⓑⓐⓛⓛ, ⓦⓗⓘⓒⓗ ⓑⓡⓤⓢⓗⓔⓢ ⓣⓗⓔ ⓝⓔⓣ ⓐⓝⓓ ⓕⓐⓛⓛⓢ ⓞⓝⓣⓞ {b}'ⓢ ⓢⓘⓓⓔ.",
+		"\\*ⓟⓘⓝⓖ\\*. {client_name} ⓣⓐⓟⓢ ⓣⓗⓔ ⓑⓐⓛⓛ, ⓦⓗⓘⓒⓗ ⓑⓡⓤⓢⓗⓔⓢ ⓣⓗⓔ ⓝⓔⓣ ⓐⓝⓓ ⓕⓐⓛⓛⓢ ⓞⓝⓣⓞ {b}'ⓢ ⓢⓘⓓⓔ.",
 		"Ⓟⓛⓘⓝⓖ! Ⓣⓗⓔ ⓑⓐⓛⓛ ⓗⓘⓣⓢ {b}'ⓢ ⓒⓗⓔⓢⓣ ⓐⓝⓓ ⓣⓗⓔⓨ ⓓⓡⓐⓜⓐⓣⓘⓒⓐⓛⓛⓨ ⓕⓐⓛⓛ ⓞⓥⓔⓡ.",
 		"Ⓟⓞⓝⓖ! Ⓣⓗⓔ ⓑⓐⓛⓛ ⓘⓢ ⓛⓐⓤⓝⓒⓗⓔⓓ ⓐⓣ ⓣⓗⓔ ⓦⓐⓛⓛ, ⓖⓞⓘⓝⓖ ⓝⓞⓦⓗⓔⓡⓔ ⓝⓔⓐⓡ ⓣⓗⓔ ⓣⓐⓑⓛⓔ."
 	],
@@ -42,16 +42,16 @@
 		"Paw prints and tufts of fur are found circling the village, but everyone seems unharmed."
 	],
 	"lynched": [
-		"The villagers have agreed to lynch **{0}**, a **{1}**.",
-		"The villagers perform surgery to obtain the heart of **{0}**, now know to be a **{1}**. They put it in a plastic cup.",
-		"The villagers perform surgery to obtain the brains of **{0}**, now know to be a **{1}**. They seal it in a glass jar.",
-		"Reluctantly, the villagers lead **{0}** to the gallows, who is later found to be a **{1}**.",
-		"The villagers sacrifice **{0}** to the belunga god, who is satisfied with the **{1}** for now.",
-		"For SCIENCE, the villagers throw **{0}** into a volcano. They discover that the melting point of a **{1}** is less than that of lava.",
-		"The villagers force **{0}** to play Russian Roulette. The town square is stained with the remains of the **{1}**.",
-		"The villagers, after much debate, finally decide on lynching **{0}**, who turned out to be... a **{1}**.",
-		"After a prolonged struggle, **{0}** is forced to the gallows, and is discovered after death to be a **{1}**.",
-		"The villagers choose to hang **{0}**; however, the rope stretches and breaks, and the ensuing fall kills the **{1}**."
+		"The villagers have agreed to lynch **{lynched_name}**, a **{lynched_role}**.",
+		"The villagers perform surgery to obtain the heart of **{lynched_name}**, now know to be a **{lynched_role}**. They put it in a plastic cup.",
+		"The villagers perform surgery to obtain the brains of **{lynched_name}**, now know to be a **{lynched_role}**. They seal it in a glass jar.",
+		"Reluctantly, the villagers lead **{lynched_name}** to the gallows, who is later found to be a **{lynched_role}**.",
+		"The villagers sacrifice **{lynched_name}** to the belunga god, who is satisfied with the **{lynched_role}** for now.",
+		"For SCIENCE, the villagers throw **{lynched_name}** into a volcano. They discover that the melting point of a **{lynched_role}** is less than that of lava.",
+		"The villagers force **{lynched_name}** to play Russian Roulette. The town square is stained with the remains of the **{lynched_role}**.",
+		"The villagers, after much debate, finally decide on lynching **{lynched_name}**, who turned out to be... a **{lynched_role}**.",
+		"After a prolonged struggle, **{lynched_name}** is forced to the gallows, and is discovered after death to be a **{lynched_role}**.",
+		"The villagers choose to hang **{lynched_name}**; however, the rope stretches and breaks, and the ensuing fall kills the **{lynched_role}**."
 	],
 	"hastotem": [
 		"**{t}** is in possession of a mysterious totem...",
