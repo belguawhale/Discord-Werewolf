@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+1/15/2017 - Lynch messages are taken from language file, as they should be; Made higher player games more fun (and hopefully somewhat balanced)
+
 1/14/2017 - Added support for languages; bot changes status depending on what state the game is (no lobby is Online, join phase is Idle, in game is Do Not Disturb); Spectators can now use !v in pm to view current votes
 
 1/13/2017 - Fixed game start timeout not working

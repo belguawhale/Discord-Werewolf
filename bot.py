@@ -1523,8 +1523,7 @@ async def run_game(message):
                 await client.send_message(client.get_channel(GAME_CHANNEL), lynched_msg)
                 session[1][lynched_player][4][:] = [x for x in session[1][lynched_player][4] if x != 'revealing_totem']
             else:
-                lynched_msg = random.choice(lang['lynched']).format(lynched_name=get_name(lynched_player),lynched_role=get_role(lynched_player))
-                lynched_msg = lynched_msg.format(get_name(lynched_player), get_role(lynched_player, 'death'))
+                lynched_msg = random.choice(lang['lynched']).format(get_name(lynched_player), get_role(lynched_player, 'death'))
                 await client.send_message(client.get_channel(GAME_CHANNEL), lynched_msg)
                 session[1][lynched_player][0] = False
                 member = client.get_server(WEREWOLF_SERVER).get_member(lynched_player)
@@ -1689,9 +1688,9 @@ COMMANDS_FOR_ROLE = {'see' : 'seer',
 ##                   [0, 0, 0, 0, 1, 0,  1, 1, 1, 1, 1, 1, 2]]}
 #                   4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
 roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. Type `kill <player>` in private message to kill them.",
-                   [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 2, 2, 2, 2]],
+                   [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 1, 1, 2]],
          'villager' : ['village', 'villagers', "Your job is to lynch all of the wolves.",
-                   [2, 3, 3, 2, 2, 3,  3, 4, 5, 5, 5, 5, 5, 6]],
+                   [2, 3, 3, 2, 2, 3,  3, 4, 5, 4, 5, 3, 4]],
          'seer' : ['village', 'seers', "Your job is to detect the wolves; you may have a vision once per night. Type `see <player>` in private message to see their role.",
                    [1, 1, 1, 1, 1, 1,  1, 1, 1, 2, 2, 2, 2]],
          'cursed villager' : ['village', 'cursed villagers', "This template is a villager but is seen by the seer as a wolf. Roles normally seen as wolf and the seer cannot be cursed.",
@@ -1701,12 +1700,12 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
                                            "To see your current totem, use the command `myrole`.",
                    [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2]],
          'cultist' : ['wolf', 'cultists', "Your job is to help the wolves kill all of the villagers.",
-                   [0, 0, 0, 1, 0, 0,  1, 1, 0, 0, 0, 0, 1, 2]],
+                   [0, 0, 0, 1, 0, 0,  1, 1, 0, 1, 0, 1, 0]],
          'traitor' : ['wolf', 'traitors', "You appear as a villager to the seer, but you are part of the wolf team. Once all other wolves die, you will turn into a wolf.",
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 2]],
+                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 2, 2, 2]],
          'harlot' : ['village', 'harlots', "You may spend the night with one player each night by using `visit <player>`. If you visit a victim of a wolf, or visit a wolf, "
                                            "you will die. You may visit yourself to stay home.",
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1]],
+                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2]],
          'crazed shaman' : ['neutral', 'crazed shamans', "You select a player to receive a random totem each night by using `give <player>`. You may give a totem to yourself, "
                                                          "but you may not give the same person a totem two nights in a row. If you do not give the totem to anyone, "
                                                          "it will be given to a random player. You win if you are alive by the end of the game.",
