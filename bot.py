@@ -1091,8 +1091,8 @@ async def end_game(reason):
     session[6] = ''
 
 async def win_condition():
-    teams = {'village' : 0, 'wolf' : 0}
-    for player in list(session[1].keys()):
+    teams = {'village' : 0, 'wolf' : 0, 'neutral' : 0}
+    for player in session[1]:
         if session[1][player][0]:
             if session[1][player][1] == 'cultist':
                 teams['village'] += 1
@@ -1102,19 +1102,19 @@ async def win_condition():
     win_team = ''
     win_lore = ''
     win_msg = ''
-    if teams['village'] <= teams['wolf']:
+    if teams['village'] + teams['neutral'] <= teams['wolf']:
         win_team = 'wolf'
         win_lore = 'The number of living villagers is equal or less than the number of living wolves! The wolves overpower the remaining villagers and devour them whole.'
     elif teams['wolf'] == 0:
         win_team = 'village'
         win_lore = 'All the wolves are dead! The surviving villagers gather the bodies of the dead wolves, roast them, and have a BBQ in celebration.'
-    elif len(session[1].keys()) == 0:
+    elif len(session[1]) == 0:
         win_lore = 'Everyone died. The town sits abandoned, collecting dust.'
         win_team = 'no win'
     else:
         return None
     
-    for player in list(session[1].keys()):
+    for player in session[1]:
         if roles[session[1][player][1]][0] == win_team:
             winners.append(get_name(player))
     if len(winners) == 0:
@@ -1520,43 +1520,60 @@ async def run_game(message):
         lynched_player = None
         
         while await win_condition() == None and session[2] and lynched_player == None and session[0]:
+            able_players = [x for x in session[1] if session[1][x][0]]
             vote_dict = {'abstain' : 0}
-            for player in [x for x in session[1] if session[1][x][0]]:
+            totem_dict = {} # For impatience and pacifism
+            for player in able_players:
+                totem_dict[player] = session[1][player][4].count('impatience_totem') - session[1][player][4].count('pacifism_totem')
+                vote_dict[player] = 0
+            able_voters = [x for x in able_players if totem_dict[x] == 0]
+            for player in able_voters:
                 if session[1][player][2] in vote_dict:
                     vote_dict[session[1][player][2]] += 1
-                elif session[1][player][2] not in ['']:
-                    vote_dict[session[1][player][2]] = 1
                 if 'influence_totem' in session[1][player][4] and session[1][player][2] not in ['']:
                     vote_dict[session[1][player][2]] += 1
-            if vote_dict != {}:
-                if vote_dict['abstain'] >= len([x for x in session[1] if session[1][x][0]]) / 2:
-                    lynched_player = 'abstain'
-                max_votes = max([vote_dict[x] for x in vote_dict])
-                if max_votes >= len([x for x in session[1] if session[1][x][0]]) // 2 + 1:
-                    for voted in vote_dict:
-                        if vote_dict[voted] == max_votes:
-                            lynched_player = voted
+            for player in [x for x in able_players if totem_dict[x] != 0]:
+                if totem_dict[player] < 0:
+                    vote_dict['abstain'] += 1
+                else:
+                    for p in [x for x in able_players if x != player]:
+                        vote_dict[p] += 1
+            if vote_dict['abstain'] >= len([x for x in session[1] if session[1][x][0]]) / 2:
+                lynched_player = 'abstain'
+            max_votes = max([vote_dict[x] for x in vote_dict])
+            if max_votes >= len([x for x in session[1] if session[1][x][0]]) // 2 + 1:
+                for voted in vote_dict:
+                    if vote_dict[voted] == max_votes:
+                        lynched_player = voted
             if (datetime.now() - session[3][1]).total_seconds() > DAY_TIMEOUT:
                 session[2] = False
             await asyncio.sleep(0.1)
         day_elapsed = datetime.now() - session[3][1]
         session[4][1] += day_elapsed
+        lynched_msg = ""
         if lynched_player:
             if lynched_player == 'abstain':
-                await client.send_message(client.get_channel(GAME_CHANNEL), "The village has agreed to not lynch anyone today.")
-            elif 'revealing_totem' in session[1][lynched_player][4]:
-                lynched_msg = 'As the villagers prepare to lynch **{0}**, their totem emits a brilliant flash of light! When the villagers are able to see again, '
-                lynched_msg += 'they discover that {0} has escaped! The left-behind totem seems to have taken on the shape of a **{1}**.'
-                lynched_msg = lynched_msg.format(get_name(lynched_player), get_role(lynched_player, 'role'))
+                for player in [x for x in totem_dict if totem_dict[x] < 0]:
+                    lynched_msg += "**{}** meekly votes to not lynch anyone today.\n".format(get_name(player))
+                lynched_msg += "The village has agreed to not lynch anyone today."
                 await client.send_message(client.get_channel(GAME_CHANNEL), lynched_msg)
-                session[1][lynched_player][4][:] = [x for x in session[1][lynched_player][4] if x != 'revealing_totem']
             else:
-                lynched_msg = random.choice(lang['lynched']).format(get_name(lynched_player), get_role(lynched_player, 'death'))
-                await client.send_message(client.get_channel(GAME_CHANNEL), lynched_msg)
-                session[1][lynched_player][0] = False
-                member = client.get_server(WEREWOLF_SERVER).get_member(lynched_player)
-                if member:
-                    await client.remove_roles(member, PLAYERS_ROLE)
+                for player in [x for x in totem_dict if totem_dict[x] > 0 and x != lynched_player]:
+                    lynched_msg += "**{}** impatiently votes to lynch **{}**.\n".format(get_name(player), get_name(lynched_player))
+                lynched_msg += '\n'
+                if 'revealing_totem' in session[1][lynched_player][4]:
+                    lynched_msg += 'As the villagers prepare to lynch **{0}**, their totem emits a brilliant flash of light! When the villagers are able to see again, '
+                    lynched_msg += 'they discover that {0} has escaped! The left-behind totem seems to have taken on the shape of a **{1}**.'
+                    lynched_msg = lynched_msg.format(get_name(lynched_player), get_role(lynched_player, 'role'))
+                    await client.send_message(client.get_channel(GAME_CHANNEL), lynched_msg)
+                    session[1][lynched_player][4][:] = [x for x in session[1][lynched_player][4] if x != 'revealing_totem']
+                else:
+                    lynched_msg += random.choice(lang['lynched']).format(get_name(lynched_player), get_role(lynched_player, 'death'))
+                    await client.send_message(client.get_channel(GAME_CHANNEL), lynched_msg)
+                    session[1][lynched_player][0] = False
+                    member = client.get_server(WEREWOLF_SERVER).get_member(lynched_player)
+                    if member:
+                        await client.remove_roles(member, PLAYERS_ROLE)
         elif lynched_player == None and await win_condition() == None and session[0]:
             await client.send_message(client.get_channel(GAME_CHANNEL), "Not enough votes were cast to lynch a player.")
         # BETWEEN DAY AND NIGHT
@@ -1565,7 +1582,7 @@ async def run_game(message):
             await client.send_message(client.get_channel(GAME_CHANNEL), "Day lasted **{0:02d}:{1:02d}**. The villagers, exhausted from the day's events, go to bed.".format(
                                                                   day_elapsed.seconds // 60, day_elapsed.seconds % 60))
             for player in list(session[1].keys()):
-                session[1][player][4][:] = [x for x in session[1][player][4] if x != 'revealing_totem' and x != 'influence_totem']
+                session[1][player][4][:] = [x for x in session[1][player][4] if x not in ['revealing_totem', 'influence_totem', 'impatience_totem', 'pacifism_totem']]
                 session[1][player][2] = ''
                 
         if session[0] and await win_condition() == None:
@@ -1670,6 +1687,7 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'abstain' : [cmd_abstain, [0, 2], "```\n{0}abstain takes no arguments\n\nRefrain from voting someone today.```"],
             'abs' : [cmd_abstain, [0, 2], "```\nAlias for {0}abstain.```"],
             'nl' : [cmd_abstain, [0, 2], "```\nAlias for {0}abstain.```"],
+            'vote' : [cmd_lynch, [0, 0], "```\nAlias for {0}lynch.```"],
             'v' : [cmd_lynch, [0, 0], "```\nAlias for {0}lynch.```"],
             'r' : [cmd_retract, [0, 0], "```\nAlias for {0}retract.```"],
             'coin' : [cmd_coin, [0, 0], "```\n{0}coin takes no arguments\n\nFlips a coin. Don't use this for decision-making, especially not for life or death situations.```"],
@@ -1746,7 +1764,9 @@ TEMPLATES_ORDERED = ['cursed villager']
 totems = {'death_totem' : 'The player who is given this totem will die tonight.',
           'protection_totem': 'The player who is given this totem is protected from dying tonight.',
           'revealing_totem': 'If the player who is given this totem is lynched, their role is revealed to everyone instead of them dying.',
-          'influence_totem': 'Votes by the player who is given this totem count twice.'}
+          'influence_totem': 'Votes by the player who is given this totem count twice.',
+          'impatience_totem' : 'The player who is given this totem is counted as voting for everyone except themselves, even if they do not lynch.',
+          'pacifism_totem' : 'The player who is given this totem is always counted as abstaining, regardless of their vote.'}
 ROLES_SEEN_VILLAGER = ['villager', 'traitor', 'cultist']
 ROLES_SEEN_WOLF = ['wolf', 'cursed']
 WOLFCHAT_ROLES = ['wolf', 'traitor']
