@@ -1638,7 +1638,7 @@ async def backup_settings_loop():
 ############## POST-DECLARATION STUFF ###############
 # {command name : [function, permissions [in channel, in pm], description]}
 commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no arguments\n\nShuts down the bot. Owner-only.```"],
-            'refresh' : [cmd_refresh, [1, 1], "```\n{0}mfresh takes an optional m\n\nRefreshes the current language's language file from GitHub. Admin+ only.```"],
+            'refresh' : [cmd_refresh, [1, 1], "```\n{0}refresh <language code>\n\nRefreshes the current language's language file from GitHub. Admin+ only.```"],
             'ping' : [cmd_ping, [0, 0], "```\n{0}ping takes no arguments\n\nTests the bot\'s responsiveness.```"],
             'eval' : [cmd_eval, [2, 2], "```\n{0}eval <evaluation string>\n\nEvaluates <evaluation string> using Python\'s eval() function and returns a result. Owner-only.```"],
             'exec' : [cmd_exec, [2, 2], "```\n{0}exec <exec string>\n\nExecutes <exec string> using Python\'s exec() function. Owner-only.```"],
