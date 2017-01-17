@@ -9,6 +9,7 @@ from io import BytesIO, StringIO
 from config import *
 from settings import *
 import json
+import urllib.request
 
 ################## START INIT #####################
 client = discord.Client()
@@ -24,12 +25,18 @@ with open(NOTIFY_FILE, 'a+') as notify_file:
     notify_me = notify_file.read().split(',')
 random.seed(datetime.now())
 
-if os.path.isfile('./lang/' + MESSAGE_LANGUAGE + '.json'):
-    with open('lang/' + MESSAGE_LANGUAGE + '.json') as data_file:
-        lang = json.load(data_file)
+def get_jsonparsed_data(url):
+    response = urllib.request.urlopen(url)
+    data = response.read().decode("utf-8")
+    return json.loads(data)
+
+if MESSAGE_LANGUAGE in get_jsonparsed_data("https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/languages.json")['languages']:
+    url = ("https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/" + MESSAGE_LANGUAGE + ".json")
 else:
-    with open('lang/en.json') as data_file:
-        lang = json.load(data_file)
+    url = ("https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/bubble_en.json")
+
+lang = get_jsonparsed_data(url)
+
 ################### END INIT ######################
 
 @client.event
@@ -264,6 +271,27 @@ async def cmd_fleave(message, parameters):
     await log(1, "{0} ({1}) used fleave {2}".format(message.author.name, message.author.id, parameters))
     if session[0] and await win_condition() == None:
         await check_traitor()
+        
+async def cmd_refresh(message, parameters):
+    if parameters == '':
+        if MESSAGE_LANGUAGE in get_jsonparsed_data("https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/languages.json")['languages']:
+            url = "https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/" + MESSAGE_LANGUAGE + ".json"
+            codeset = MESSAGE_LANGUAGE
+        else:
+            url = "https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/en.json"
+            codeset = 'en'
+    else:
+        if parameters in get_jsonparsed_data("https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/languages.json")['languages']:
+            url = "https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/" + parameters + ".json"
+            codeset = parameters
+        else:
+            url = "https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/en.json"
+            codeset = 'en'
+
+    global lang
+    lang = get_jsonparsed_data(url)
+
+    await reply(message, 'The messages with language code `' + codeset + '` have been refreshed from GitHub.')
 
 async def cmd_start(message, parameters):
     if session[0]:
@@ -1610,6 +1638,7 @@ async def backup_settings_loop():
 ############## POST-DECLARATION STUFF ###############
 # {command name : [function, permissions [in channel, in pm], description]}
 commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no arguments\n\nShuts down the bot. Owner-only.```"],
+            'refresh' : [cmd_refresh, [1, 1], "```\n{0}mfresh takes an optional m\n\nRefreshes the current language's language file from GitHub. Admin+ only.```"],
             'ping' : [cmd_ping, [0, 0], "```\n{0}ping takes no arguments\n\nTests the bot\'s responsiveness.```"],
             'eval' : [cmd_eval, [2, 2], "```\n{0}eval <evaluation string>\n\nEvaluates <evaluation string> using Python\'s eval() function and returns a result. Owner-only.```"],
             'exec' : [cmd_exec, [2, 2], "```\n{0}exec <exec string>\n\nExecutes <exec string> using Python\'s exec() function. Owner-only.```"],
