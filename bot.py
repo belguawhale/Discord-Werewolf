@@ -992,6 +992,21 @@ async def cmd_visit(message, parameters):
                     await log(0, "{0} ({1}) VISIT {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
             else:        
                 await reply(message, "Could not find player " + parameters)
+
+async def cmd_totem(message, parameters):
+    if not parameters == '':
+        reply_totems = []
+        for totem in totems:
+            if totem.startswith(parameters):
+                reply_totems.append(totem)
+        if len(reply_totems) == 1:
+            totem = reply_totems[0]
+            reply_msg = "```\n"
+            reply_msg += totem[0].upper() + totem[1:].replace('_', ' ') + "\n\n"
+            reply_msg += totems[totem] + "```"
+            await reply(message, reply_msg)
+            return
+    await reply(message, "Available totems: " + ", ".join(sorted([x.replace('_', ' ') for x in totems])))
         
 ######### END COMMANDS #############
 
@@ -1709,6 +1724,8 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'getrole' : [cmd_getrole, [2, 2], "```\n{0}getrole <player> <revealtype>\n\nTests get_role command.```"],
             'visit' : [cmd_visit, [2, 0], "```\n{0}visit <player>\n\nIf you are a harlot, visits <player>. You can stay home by visiting yourself. "
                                           "You will die if you visit a wolf or the victim of the wolves.```"],
+            'totem' : [cmd_totem, [0, 0], "```\n{0}totem [<totem>]\n\nReturns information on a totem, or displays a list of totems.```"],
+            'totems' : [cmd_totem, [0, 0], "```\nAlias for {0}totem.```"],
             'test' : [cmd_test, [1, 0], "test"]}
 
 COMMANDS_FOR_ROLE = {'see' : 'seer',
