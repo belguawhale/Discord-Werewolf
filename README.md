@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+1/22/2017 - Bot now gets languages from my repository rather than an external one
+
 1/18/2017 - Added !totem command to list totems/display a totem's description
 
 1/17/2017 - Redid how votes are counted in preparation for impatience and pacifism totems; Impatience and pacifism totems work :smile:; Fixed a small bug with checking win condition in preparation for crazed shaman

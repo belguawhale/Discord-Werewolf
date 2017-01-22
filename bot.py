@@ -27,15 +27,16 @@ random.seed(datetime.now())
 
 def get_jsonparsed_data(url):
     response = urllib.request.urlopen(url)
+    if response.code / 100 >= 4:
+        return None # url does not exist
     data = response.read().decode("utf-8")
     return json.loads(data)
 
-if MESSAGE_LANGUAGE in get_jsonparsed_data("https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/languages.json")['languages']:
-    url = ("https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/" + MESSAGE_LANGUAGE + ".json")
-else:
-    url = ("https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/bubble_en.json")
-
+url = "https://raw.githubusercontent.com/belguawhale/Discord-Werewolf/master/lang/" + MESSAGE_LANGUAGE + ".json"
 lang = get_jsonparsed_data(url)
+if not lang:
+    print("Could not find language {}, fallback on en".format(MESSAGE_LANGUAGE))
+    lang = get_jsonparsed_data("https://raw.githubusercontent.com/belguawhale/Discord-Werewolf/master/lang/en.json")
 
 ################### END INIT ######################
 
@@ -274,23 +275,20 @@ async def cmd_fleave(message, parameters):
         
 async def cmd_refresh(message, parameters):
     if parameters == '':
-        if MESSAGE_LANGUAGE in get_jsonparsed_data("https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/languages.json")['languages']:
-            url = "https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/" + MESSAGE_LANGUAGE + ".json"
-            codeset = MESSAGE_LANGUAGE
-        else:
-            url = "https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/en.json"
-            codeset = 'en'
-    else:
-        if parameters in get_jsonparsed_data("https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/languages.json")['languages']:
-            url = "https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/" + parameters + ".json"
-            codeset = parameters
-        else:
-            url = "https://raw.githubusercontent.com/haykam821/Discord-Werewolf-Language/master/en.json"
-            codeset = 'en'
-
+        parameters = MESSAGE_LANGUAGE
+    url = "https://raw.githubusercontent.com/belguawhale/Discord-Werewolf/master/lang/{}.json".format(parameters)
+    codeset = parameters
+    temp_lang = get_jsonparsed_data(url)
+    if not temp_lang:
+        url = "https://raw.githubusercontent.com/belguawhale/Discord-Werewolf/master/lang/en.json"
+        codeset = 'en'
+        temp_lang = get_jsonparsed_data(url)
+    if not temp_lang:
+        await reply(message, "Error: could not refresh language messages.")
+        await log(2, "Refresh of language code {} and fallback failed".format(parameters))
+        return
     global lang
-    lang = get_jsonparsed_data(url)
-
+    lang = temp_lang
     await reply(message, 'The messages with language code `' + codeset + '` have been refreshed from GitHub.')
 
 async def cmd_start(message, parameters):
