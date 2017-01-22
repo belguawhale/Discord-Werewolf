@@ -7,7 +7,11 @@
 		"Dink! The ball knocks over **{bot_nick}**'s glass of lemonade.",
 		"\\*ping\\*. **{bot_nick}** taps the ball, which brushes the net and falls onto **{author}'s** side.",
 		"Pling! The ball hits **{author}'s** chest and they dramatically fall over.",
-		"Pong! The ball is launched at the wall, going nowhere near the table."
+		"Pong! The ball is launched at the wall, going nowhere near the table.",
+		"An error has pinged and has been ponged.",
+		"PING! **{author}**",
+		"Don't you mean **{p}ping**?",
+		"{bot_nick}.exe has stopped responding. Windows is checking for a solution to the problem..."
 	],
 	"maxplayers": [
 		"The maximum number of players ({0}) have already joined the game.",
@@ -30,7 +34,9 @@
 	"leavelobby": [
 		"**{0}** left the game. There are now **{1}** players in the lobby.",
 		"**{0}** walked out of the lobby. There are now **{1}** players in the lobby.",
-		"**{0}** was shot twice by a hunter, once in the head and once in the heart. Remaining players: **{1}**"
+		"**{0}** was shot twice by a hunter, once in the head and once in the heart. Remaining players: **{1}**",
+		"**{0}** poked a bear in the eye with a stick and has paid the price. Remaining players: **{1}**",
+		"**{0}** was hit by a humongous yellow bullet from a giant yellow tank. The **{1}** remaining players cower in fear."
 	],
 	"gamestart": [
 		"**{0}** has started a game of Werewolf. Type `{p}join` to join. Type `{p}start` to start the game.",
@@ -40,7 +46,11 @@
 		"The villagers discover the dead body of a beloved pet penguin, but lucklily no one was harmed.",
 		"The villagers discover the dead body of a beloved pet dog, but lucklily no one was harmed.",
 		"The villagers discover the dead body of a beloved pet cat, but lucklily no one was harmed.",
-		"Paw prints and tufts of fur are found circling the village, but everyone seems unharmed."
+		"Paw prints and tufts of fur are found circling the village, but everyone seems unharmed.",
+		"Some house doors have been opened.",
+	        "A scent much like that of a wolf permeates the air.",
+	        "Half-buried wolf droppings are found.",
+	        "Traces of wolf fur are found."
 	],
 	"lynched": [
 		"The villagers have agreed to lynch **{0}**, a **{1}**.",
@@ -70,7 +80,11 @@
 		"While wearing a blue pentagonal hat, **{0}**, a **{1}**, was destroyed by a giant cannonball.",
 		"While wearing an oversized blue pentagonal hat, **{0}**, a **{1}**, was annihilated by a humongous mortar shell.",
 		"After jumping into a tank, **{0}** drowned. The fish consumed the dead **{1}**'s body.",
-		"**{0}** mysteriously disappeared in the woods. Nobody knows where the **{1}** went."
+		"**{0}** mysteriously disappeared in the woods. Nobody knows where the **{1}** went.",
+		"Standing under a tree, **{0}**, a **{1}**, is killed by a falling branch.",
+		"**{0}**, a **{1}**, is killed by lightning before the villagers' eyes. The air smells of burnt flesh.",
+        	"Rampaging through the village, a bull gores **{0}**, a **{1}**.",
+	        "**{0}**, a **{1}**, falls into a vat of molasses and drowns."
 	],
 	"firstjoin": [
 		"**{0}** has started a game of Werewolf. Type `{p}join` to join. Type `{p}start` to start the game."

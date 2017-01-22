@@ -103,7 +103,7 @@ async def cmd_shutdown(message, parameters):
 
 async def cmd_ping(message, parameters):    
     msg = random.choice(lang['ping']).format(
-        bot_nick=client.user.display_name, author=message.author.name)
+        bot_nick=client.user.display_name, author=message.author.name, p=BOT_PREFIX)
     await reply(message, msg)
 
 async def cmd_eval(message, parameters): 
