@@ -9,6 +9,10 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+1/29/2017 - Gamemode structure works now and they can be set using !fgame; Secret update!
+
+1/27/2017 - Change in how role counts are stored
+
 1/22/2017 - Bot now gets languages from my repository rather than an external one
 
 1/18/2017 - Added !totem command to list totems/display a totem's description
