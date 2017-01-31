@@ -9,6 +9,10 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+1/31/2017 - Added !fother command to manipulate other flag (totems, traitor)
+
+1/30/2017 - Added !ftemplate command to set templates and added ability to stop a game in !shutdown
+
 1/29/2017 - Gamemode structure works now and they can be set using !fgame; Secret update!
 
 1/27/2017 - Change in how role counts are stored

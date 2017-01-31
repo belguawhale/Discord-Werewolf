@@ -97,7 +97,11 @@ async def on_message(message):
         await parse_command(command, message, parameters)
 
 ############# COMMANDS #############
-async def cmd_shutdown(message, parameters):    
+async def cmd_shutdown(message, parameters):
+    if parameters.startswith("-fstop"):
+        await cmd_fstop(message, "-force")
+    elif parameters.startswith("-stop"):
+        await cmd_fstop(message, parameters[len("-stop"):])
     await reply(message, "Shutting down...")
     await client.logout()
 
@@ -655,7 +659,7 @@ async def cmd_votes(message, parameters):
         elif session[1][player][2] != '':
             vote_dict[session[1][player][2]] = [player]
     abstainers = vote_dict['abstain']
-    reply_msg = "**{}** players, **{}** votes required to lynch, **{}** players available to vote, **{}** player{} refrained from voting.\n".format(
+    reply_msg = "**{}** living players, **{}** votes required to lynch, **{}** players available to vote, **{}** player{} refrained from voting.\n".format(
         len(alive_players), len(alive_players) // 2 + 1, len(alive_players), len(abstainers), '' if len(abstainers) == 1 else 's')
     # TODO: Silenced players
     if len(vote_dict) == 1 and vote_dict['abstain'] == []:
@@ -1027,6 +1031,82 @@ async def cmd_fgame(message, parameters):
 
 async def cmd_github(message, parameters):
     await reply(message, "http://github.com/belguawhale/Discord-Werewolf")
+
+async def cmd_ftemplate(message, parameters):
+    if not session[0]:
+        return
+    if parameters == '':
+        await reply(message, commands['ftemplate'][2].format(BOT_PREFIX))
+        return
+    params = parameters.split(' ')
+    player = get_player(params[0])
+    if len(params) > 1:
+        action = parameters.split(' ')[1]
+    else:
+        action = ""
+    if len(params) > 2:
+        templates = parameters.split(' ')[2:]
+    else:
+        templates = []
+    if player:
+        reply_msg = "Successfully "
+        if action in ['+', 'add', 'give']:
+            session[1][player][3] += templates
+            reply_msg += "added templates **{0}** to **{1}**."
+        elif action in ['-', 'remove', 'del']:
+            for template in templates[:]:
+                if template in session[1][player][3]:
+                    session[1][player][3].remove(template)
+                else:
+                    templates.remove(template)
+            reply_msg += "removed templates **{0}** from **{1}**."
+        elif action in ['=', 'set']:
+            session[1][player][3] = templates
+            reply_msg += "set **{1}**'s templates to **{0}**."
+        else:
+            reply_msg = "**{1}**'s templates: " + ', '.join(session[1][player][3])
+    else:
+        reply_msg = "Could not find player {1}."
+
+    await reply(message, reply_msg.format(', '.join(templates), get_name(player)))
+
+async def cmd_fother(message, parameters):
+    if not session[0]:
+        return
+    if parameters == '':
+        await reply(message, commands['fother'][2].format(BOT_PREFIX))
+        return
+    params = parameters.split(' ')
+    player = get_player(params[0])
+    if len(params) > 1:
+        action = parameters.split(' ')[1]
+    else:
+        action = ""
+    if len(params) > 2:
+        others = parameters.split(' ')[2:]
+    else:
+        others = []
+    if player:
+        reply_msg = "Successfully "
+        if action in ['+', 'add', 'give']:
+            session[1][player][4] += others
+            reply_msg += "added **{0}** to **{1}**'s other flag."
+        elif action in ['-', 'remove', 'del']:
+            for other in others[:]:
+                if other in session[1][player][4]:
+                    session[1][player][4].remove(other)
+                else:
+                    others.remove(other)
+            reply_msg += "removed **{0}** from **{1}**'s other flag."
+        elif action in ['=', 'set']:
+            session[1][player][4] = others
+            reply_msg += "set **{1}**'s other flag to **{0}**."
+        else:
+            reply_msg = "**{1}**'s other flag: " + ', '.join(session[1][player][4])
+    else:
+        reply_msg = "Could not find player {1}."
+
+    await reply(message, reply_msg.format(', '.join(others), get_name(player))) 
         
 ######### END COMMANDS #############
 
@@ -1737,7 +1817,7 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'deop' : [cmd_deop, [1, 1], "```\n{0}deop takes no arguments\n\nDeops yourself so you can play with the players ;)```"],
             'fjoin' : [cmd_fjoin, [1, 1], "```\n{0}fjoin <mentions of users>\n\nForces each <mention> to join the game.```"],
             'fleave' : [cmd_fleave, [1, 1], "```\n{0}fleave <mentions of users | all>\n\nForces each <mention> to leave the game. If the parameter is all, removes all players from the game.```"],
-            'role' : [cmd_role, [0, 0], "```\n{0}role [<role> | <number of players>]\n\nIf a <role> is given, displays a description of <role>. "
+            'role' : [cmd_role, [0, 0], "```\n{0}role [<role>|<number of players>]\n\nIf a <role> is given, displays a description of <role>. "
                                         "If a <number of players> is given, displays the quantity of each role for the specified <number of players>. "
                                         "If left blank, displays a list of roles.```"],
             'roles' : [cmd_role, [0, 0], "```\nAlias for {0}role.```"],
@@ -1765,7 +1845,7 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'fstart' : [cmd_fstart, [1, 2], "```\n{0}fstart takes no arguments\n\nForces game to start.```"],
             'frole' : [cmd_frole, [1, 2], "```\n{0}frole <player> <role>\n\nSets <player>'s role to <role>.```"],
             'force' : [cmd_force, [1, 2], "```\n{0}force <player> <target>\n\nSets <player>'s target flag (session[1][player][2]) to <target>.```"],
-            'session' : [cmd_session, [2, 1], "```\n{0}session takes no arguments\n\nReplies with the contents of the session variable in pm for debugging purposes. Admin only.```"],
+            'session' : [cmd_session, [1, 1], "```\n{0}session takes no arguments\n\nReplies with the contents of the session variable in pm for debugging purposes. Admin only.```"],
             'time' : [cmd_time, [0, 0], "```\n{0}time takes no arguments\n\nChecks in-game time.```"],
             't' : [cmd_time, [0, 0], "```\nAlias for {0}time.```"],
             'give' : [cmd_give, [2, 0], "```\n{0}give <player>\n\nIf you are a shaman, gives your totem to <player>. You can see your totem by using `myrole` in pm.```"],
@@ -1780,6 +1860,8 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'totem' : [cmd_totem, [0, 0], "```\n{0}totem [<totem>]\n\nReturns information on a totem, or displays a list of totems.```"],
             'totems' : [cmd_totem, [0, 0], "```\nAlias for {0}totem.```"],
             'fgame' : [cmd_fgame, [1, 2], "```\n{0}fgame [<gamemode>]\n\nForcibly sets or unsets [<gamemode>].```"],
+            'ftemplate' : [cmd_ftemplate, [1, 2], "```\n{0}ftemplate <player> [<add|remove|set>] [<template1 [template2 ...]>]\n\nManipulates a player's templates.```"],
+            'fother' : [cmd_fother, [1, 2], "```\n{0}fother <player> [<add|remove|set>] [<other1 [other2 ...]>]\n\nManipulates a player's other flag (totems, traitor).```"],
             'test' : [cmd_test, [1, 0], "test"]}
 
 COMMANDS_FOR_ROLE = {'see' : 'seer',
