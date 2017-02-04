@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+2/3/2017 - Fixed a bug where harlot with protection totem was protected if they visited someone; Fixed a bug where fool was too op for revealing totem; Crazed shaman works, but only has the same totems as shaman right now; Fixed a bug where using !time during sunrise would screw stuff up; Fixed a bug with !myrole; Added !faftergame command to make it easier to do updates
+
 1/31/2017 - Added !fother command to manipulate other flag (totems, traitor)
 
 1/30/2017 - Added !ftemplate command to set templates and added ability to stop a game in !shutdown
