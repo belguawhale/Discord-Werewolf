@@ -21,6 +21,7 @@ ratelimit_dict = {}
 pingif_dict = {}
 notify_me = []
 faftergame = None
+starttime = datetime.now()
 with open(NOTIFY_FILE, 'a+') as notify_file:
     notify_file.seek(0)
     notify_me = notify_file.read().split(',')
@@ -446,7 +447,7 @@ async def cmd_myrole(message, parameters):
 
 async def cmd_stats(message, parameters):
     if session[0]:
-        reply_msg = "It is now **" + ("day" if session[2] else "night") + "time**."
+        reply_msg = "It is now **" + ("day" if session[2] else "night") + "time**. Using the **{}** gamemode.".format(session[6])
         reply_msg += "\n**" + str(len(session[1])) + "** players playing: **" + str(len([x for x in session[1] if session[1][x][0]])) + "** alive, "
         reply_msg += "**" + str(len([x for x in session[1] if not session[1][x][0]])) + "** dead\n"
 ##        reply_msg += "```\nLiving players: " + ", ".join(sorted([get_name(x) + ' (' + x + ')' for x in list(session[1].keys()) if session[1][x][0]])) + '\n'
@@ -932,9 +933,11 @@ async def cmd_online(message, parameters):
     await reply(message, "PING! {}".format(''.join(online)))
 
 async def cmd_notify(message, parameters):
+    if session[0]:
+        return
     notify = message.author.id in notify_me
     if parameters == '':
-        online = ["<@{}>".format(x) for x in notify_me if is_online(x)]
+        online = ["<@{}>".format(x) for x in notify_me if is_online(x) and x not in session[1]]
         await reply(message, "PING! {}".format(''.join(online)))
     elif parameters in ['true', '+', 'yes']:
         if notify:
@@ -1120,6 +1123,24 @@ async def cmd_faftergame(message, parameters):
         await reply(message, "Command `{}` will run after the next game ends.".format(parameters))
     else:
         await reply(message, "{} is not a valid command!".format(command))
+
+async def cmd_uptime(message, parameters):
+    delta = datetime.now() - starttime
+    output = [[delta.days, 'day'],
+              [delta.seconds // 3600, 'hour'],
+              [delta.seconds // 60, 'minute'],
+              [delta.seconds % 60, 'second']]
+    for i in range(len(output)):
+        if output[i][0] != 1:
+            output[i][1] += 's'
+    reply_msg = ''
+    if output[0][0] != 0:
+        reply_msg += "{} {} ".format(output[0][0], output[0][1])
+    for i in range(1, len(output)):
+        reply_msg += "{} {} ".format(output[i][0], output[i][1])
+    reply_msg = reply_msg[:-1]
+    await reply(message, "Uptime: **{}**".format(reply_msg))
+    
         
 ######### END COMMANDS #############
 
@@ -1904,6 +1925,7 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'ftemplate' : [cmd_ftemplate, [1, 2], "```\n{0}ftemplate <player> [<add|remove|set>] [<template1 [template2 ...]>]\n\nManipulates a player's templates.```"],
             'fother' : [cmd_fother, [1, 2], "```\n{0}fother <player> [<add|remove|set>] [<other1 [other2 ...]>]\n\nManipulates a player's other flag (totems, traitor).```"],
             'faftergame' : [cmd_faftergame, [2, 2], "```\n{0}faftergame <command> [<parameters>]\n\nSchedules <command> to run with [<parameters>] after the next game ends.```"],
+            'uptime' : [cmd_uptime, [0, 0], "```\n{0}uptime takes no arguments\n\nChecks the bot's uptime.```"],
             'test' : [cmd_test, [1, 0], "test"]}
 
 COMMANDS_FOR_ROLE = {'see' : 'seer',
@@ -1950,9 +1972,9 @@ gamemodes = {'default' : {
                  'wolf' :
                    [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 1, 1, 2],
                  'villager' :
-                   [2, 3, 3, 2, 2, 3,  3, 4, 5, 4, 5, 3, 4],
+                   [2, 3, 3, 2, 2, 2,  2, 3, 3, 3, 3, 2, 3],
                  'seer' : 
-                   [1, 1, 1, 1, 1, 1,  1, 1, 1, 2, 2, 2, 2],
+                   [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 2, 2, 2],
                  'cursed villager' : 
                    [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2],
                  'shaman' : 
@@ -1964,7 +1986,7 @@ gamemodes = {'default' : {
                  'harlot' : 
                    [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
                  'crazed shaman' : 
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 2, 1, 1],
                  'fool' :
                    [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0]},
              'test' : {
@@ -1994,8 +2016,8 @@ gamemodes = {'default' : {
                  'wolf' :
                    [0, 0, 0, 0, 1, 1,  2, 2, 2, 3, 3, 3, 3],
                  'villager' :
-                 # [0, 0, 0, 0, 2, 2,  2, 1, 1, 1, 2, 1, 2],
-                   [0, 0, 0, 0, 2, 2,  2, 2, 2, 2, 3, 2, 3],
+                   [0, 0, 0, 0, 2, 2,  2, 1, 1, 1, 2, 1, 2],
+                # [0, 0, 0, 0, 2, 2,  2, 2, 2, 2, 3, 2, 3],
                  'seer' : 
                    [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
                  'cursed villager' : 
@@ -2009,8 +2031,8 @@ gamemodes = {'default' : {
                  'harlot' : 
                    [0, 0, 0, 0, 1, 1,  1, 1, 1, 2, 2, 2, 2],
                  'crazed shaman' : 
-                 # [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1],
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+                   [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1],
+                # [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
                  'fool' :
                    [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1]},
              'chaos' : {
@@ -2030,6 +2052,28 @@ gamemodes = {'default' : {
                  'traitor' : 
                    [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
                  'harlot' : 
+                   [0, 0, 0, 1, 1, 1,  2, 2, 2, 3, 3, 3, 4],
+                 'crazed shaman' : 
+                   [0, 0, 0, 0, 1, 1,  1, 2, 2, 3, 3, 4, 4],
+                 'fool' :
+                   [0, 0, 1, 1, 1, 1,  1, 2, 2, 2, 2, 2, 2]},
+             'orgy' : {
+                  # 4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+                 'wolf' :
+                   [1, 1, 1, 1, 1, 1,  2, 2, 2, 3, 3, 3, 3],
+                 'villager' :
+                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+                 'seer' : 
+                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+                 'cursed villager' : 
+                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+                 'harlot' : 
+                   [3, 4, 4, 4, 3, 4,  3, 2, 3, 1, 2, 1, 1],
+                 'cultist' : 
+                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+                 'traitor' : 
+                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
+                 'shaman' : 
                    [0, 0, 0, 1, 1, 1,  2, 2, 2, 3, 3, 3, 4],
                  'crazed shaman' : 
                    [0, 0, 0, 0, 1, 1,  1, 2, 2, 3, 3, 4, 4],
