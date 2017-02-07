@@ -1211,14 +1211,17 @@ async def assign_roles(gamemode):
     # Generate list of roles
     
     for role in gamemode_roles:
-        for i in range(gamemode_roles[role]):
-            massive_role_list.append(role)
+        if role not in TEMPLATES_ORDERED:
+            for i in range(gamemode_roles[role]):
+                massive_role_list.append(role)
+    for i in range(len(session[1]) - len(massive_role_list)):
+        massive_role_list.append('villager')
     random.shuffle(massive_role_list)
     for player in list(session[1]):
         session[1][player][1] = massive_role_list.pop()
-        if session[1][player][1] == 'cursed villager':
-            session[1][player][1] = 'villager'
-            session[1][player][3].append('cursed')
+    for i in range(gamemode_roles['cursed villager'] if 'cursed villager' in gamemode_roles else 0):
+        cursed = random.choice([x for x in session[1] if get_role(x, 'role') not in ['wolf', 'seer', 'fool'] and 'cursed' not in session[1][x][3]])
+        session[1][cursed][3].append('cursed')
 
 ##    if gamemode == 'default':
 ##        for role in roles.keys():
@@ -1417,6 +1420,25 @@ def get_roles(gamemode, players):
         return gamemode_roles
     return None
 
+def get_votes(totem_dict):
+    able_players = [x for x in session[1] if session[1][x][0]]
+    vote_dict = {'abstain' : 0}
+    for player in able_players:
+        vote_dict[player] = 0
+    able_voters = [x for x in able_players if totem_dict[x] == 0]
+    for player in able_voters:
+        if session[1][player][2] in vote_dict:
+            vote_dict[session[1][player][2]] += 1
+        if 'influence_totem' in session[1][player][4] and session[1][player][2] not in ['']:
+            vote_dict[session[1][player][2]] += 1
+    for player in [x for x in able_players if totem_dict[x] != 0]:
+        if totem_dict[player] < 0:
+            vote_dict['abstain'] += 1
+        else:
+            for p in [x for x in able_players if x != player]:
+                vote_dict[p] += 1
+    return vote_dict
+
 async def wolfchat(message):
     for wolf in [x for x in session[1].keys() if x != message.author.id and session[1][x][0] and session[1][x][1] in WOLFCHAT_ROLES and client.get_server(WEREWOLF_SERVER).get_member(x)]:
         try:
@@ -1539,15 +1561,16 @@ async def run_game(message):
                         await client.send_message(member, msg)
                 except discord.Forbidden:
                     await client.send_message(client.get_channel(GAME_CHANNEL), member.mention + ", you cannot play the game if you block me")
-        await log(0, log_msg)
+        await log(0, 'SUNSET LOG:\n' + log_msg)
         if session[3][0] == 0:
             first_night = False
         # NIGHT
         session[3][0] = datetime.now()
         await client.send_message(client.get_channel(GAME_CHANNEL), "It is now **nighttime**.")
+        warn = False
         while await win_condition() == None and not session[2] and session[0]:
             end_night = True
-            for player in list(session[1]):
+            for player in session[1]:
                 if session[1][player][0] and session[1][player][1] in ['seer', 'wolf', 'harlot']:
                     end_night = end_night and (session[1][player][2] != '')
                 if session[1][player][0] and session[1][player][1] in ['shaman', 'crazed_shaman']:
@@ -1555,6 +1578,10 @@ async def run_game(message):
             end_night = end_night or (datetime.now() - session[3][0]).total_seconds() > NIGHT_TIMEOUT
             if end_night:
                 session[2] = True
+            if (datetime.now() - session[3][0]).total_seconds() > NIGHT_WARNING and warn == False:
+                warn = True
+                await client.send_message(client.get_channel(GAME_CHANNEL), "**A few villagers awake early and notice it is still dark outside."
+                                          "The night is almost over and there are still whispers heard in the village.**")
             await asyncio.sleep(0.1)
         night_elapsed = datetime.now() - session[3][0]
         session[4][0] += night_elapsed
@@ -1723,36 +1750,41 @@ async def run_game(message):
             await client.send_message(client.get_channel(GAME_CHANNEL), "It is now **daytime**. Use `{}lynch <player>` to vote to lynch <player>.".format(BOT_PREFIX))
 
         lynched_player = None
-        
+        warn = False
+        totem_dict = {} # For impatience and pacifism; we can do this here since totems do not change during day
+        for player in [x for x in session[1] if session[1][x][0]]:
+            totem_dict[player] = session[1][player][4].count('impatience_totem') - session[1][player][4].count('pacifism_totem')
         while await win_condition() == None and session[2] and lynched_player == None and session[0]:
-            able_players = [x for x in session[1] if session[1][x][0]]
-            vote_dict = {'abstain' : 0}
-            totem_dict = {} # For impatience and pacifism
-            for player in able_players:
-                totem_dict[player] = session[1][player][4].count('impatience_totem') - session[1][player][4].count('pacifism_totem')
-                vote_dict[player] = 0
-            able_voters = [x for x in able_players if totem_dict[x] == 0]
-            for player in able_voters:
-                if session[1][player][2] in vote_dict:
-                    vote_dict[session[1][player][2]] += 1
-                if 'influence_totem' in session[1][player][4] and session[1][player][2] not in ['']:
-                    vote_dict[session[1][player][2]] += 1
-            for player in [x for x in able_players if totem_dict[x] != 0]:
-                if totem_dict[player] < 0:
-                    vote_dict['abstain'] += 1
-                else:
-                    for p in [x for x in able_players if x != player]:
-                        vote_dict[p] += 1
+            vote_dict = get_votes(totem_dict)
             if vote_dict['abstain'] >= len([x for x in session[1] if session[1][x][0]]) / 2:
                 lynched_player = 'abstain'
             max_votes = max([vote_dict[x] for x in vote_dict])
+            max_voted = []
             if max_votes >= len([x for x in session[1] if session[1][x][0]]) // 2 + 1:
                 for voted in vote_dict:
                     if vote_dict[voted] == max_votes:
-                        lynched_player = voted
+                        max_voted.append(voted)
+                lynched_player = random.choice(max_voted)
             if (datetime.now() - session[3][1]).total_seconds() > DAY_TIMEOUT:
                 session[2] = False
+            if (datetime.now() - session[3][1]).total_seconds() > DAY_WARNING and warn == False:
+                warn = True
+                await client.send_message(client.get_channel(GAME_CHANNEL), "**As the sun sinks inexorably toward the horizon, turning the lanky pine "
+                                          "trees into fire-edged silhouettes, the villagers are reminded that very little time remains for them to reach a "
+                                          "decision; if darkness falls before they have done so, the majority will win the vote. No one will be lynched if "
+                                          "there are no votes or an even split.**")
             await asyncio.sleep(0.1)
+        if not lynched_player:
+            vote_dict = get_votes(totem_dict)
+            print(vote_dict)
+            max_votes = max([vote_dict[x] for x in vote_dict])
+            max_voted = []
+            for voted in vote_dict:
+                if vote_dict[voted] == max_votes and voted != 'abstain':
+                    max_voted.append(voted)
+            print(max_voted)
+            if len(max_voted) == 1:
+                lynched_player = max_voted[0]
         day_elapsed = datetime.now() - session[3][1]
         session[4][1] += day_elapsed
         lynched_msg = ""
