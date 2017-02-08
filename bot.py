@@ -1128,7 +1128,7 @@ async def cmd_uptime(message, parameters):
     delta = datetime.now() - starttime
     output = [[delta.days, 'day'],
               [delta.seconds // 3600, 'hour'],
-              [delta.seconds // 60, 'minute'],
+              [delta.seconds // 60 % 60, 'minute'],
               [delta.seconds % 60, 'second']]
     for i in range(len(output)):
         if output[i][0] != 1:
@@ -1235,6 +1235,7 @@ async def assign_roles(gamemode):
 ##                session[1][player][3].append('cursed')
 
 async def end_game(reason):
+    global faftergame
     await client.change_presence(status=discord.Status.online)
     if not session[0]:
         return
@@ -1264,7 +1265,6 @@ async def end_game(reason):
         command = faftergame.content.split(' ')[1]
         parameters = ' '.join(faftergame.content.split(' ')[2:])
         await commands[command][0](faftergame, parameters)
-        global faftergame
         faftergame = None
 
 async def win_condition():
@@ -1439,10 +1439,19 @@ def get_votes(totem_dict):
                 vote_dict[p] += 1
     return vote_dict
 
-async def wolfchat(message):
-    for wolf in [x for x in session[1].keys() if x != message.author.id and session[1][x][0] and session[1][x][1] in WOLFCHAT_ROLES and client.get_server(WEREWOLF_SERVER).get_member(x)]:
+async def wolfchat(message, author=None):
+    if isinstance(message, discord.Message):
+        author = message.author.id
+        msg = message.content
+    else:
+        msg = str(message)
+    for wolf in [x for x in session[1] if x != author and session[1][x][0] and session[1][x][1] in WOLFCHAT_ROLES and client.get_server(WEREWOLF_SERVER).get_member(x)]:
         try:
-            await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(wolf), "**[Wolfchat]** message from **" + message.author.name + "**: " + message.content)
+            member = client.get_server(WEREWOLF_SERVER).get_member(author)
+            if member:
+                author = member.display_name
+            await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(wolf), "**[Wolfchat]** message from **{}**: {}".format(
+                author, msg))
         except discord.Forbidden:
             pass
 
@@ -1580,7 +1589,7 @@ async def run_game(message):
                 session[2] = True
             if (datetime.now() - session[3][0]).total_seconds() > NIGHT_WARNING and warn == False:
                 warn = True
-                await client.send_message(client.get_channel(GAME_CHANNEL), "**A few villagers awake early and notice it is still dark outside."
+                await client.send_message(client.get_channel(GAME_CHANNEL), "**A few villagers awake early and notice it is still dark outside. "
                                           "The night is almost over and there are still whispers heard in the village.**")
             await asyncio.sleep(0.1)
         night_elapsed = datetime.now() - session[3][0]
@@ -1878,7 +1887,7 @@ async def game_start_timeout_loop():
         perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
         perms.send_messages = True
         await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
-        for player in list(list(session[1].keys())):
+        for player in list(session[1]):
             del session[1][player]
             member = client.get_server(WEREWOLF_SERVER).get_member(player)
             if member:

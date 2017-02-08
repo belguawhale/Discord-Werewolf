@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+2/7/2017 - Fixed a SyntaxWarning with faftergame; Changed how wolfchat works in preparation for other stuff; Fixed uptime's minutes displaying incorrectly
+
 2/6/2017 - Roles other than villager can be cursed now; Changed how votes left at end of day work: majority gets the lynch, if no votes or 2 players have equal numbers of votes then no lynch occurs; Added a warning that day or night is about to end
 
 2/5/2017 - Added gamemode to !stats; !notify only notifies you if you are not playing and does not work in game; Added crazed shaman to default mode; Added !uptime command; Added orgy gamemode as a joke
