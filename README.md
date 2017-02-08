@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+2/8/2017 - Changed how debug logs are done to speed up bot considerably; !list is sorted now; Made death message code more efficient; Removed a bunch of unnecessary comments; Added crazy gamemode
+
 2/7/2017 - Fixed a SyntaxWarning with faftergame; Changed how wolfchat works in preparation for other stuff; Fixed uptime's minutes displaying incorrectly
 
 2/6/2017 - Roles other than villager can be cursed now; Changed how votes left at end of day work: majority gets the lynch, if no votes or 2 players have equal numbers of votes then no lynch occurs; Added a warning that day or night is about to end

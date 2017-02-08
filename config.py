@@ -15,3 +15,6 @@ IGNORE_THRESHOLD = 7
 NOTIFY_FILE = 'notify.txt'
 BACKUP_INTERVAL = 300
 MESSAGE_LANGUAGE = 'en'
+LOG_FILE = 'debug.txt'
+MIN_LOG_LEVEL = 0
+# 0 to log everything, 1 to log only gameplay-related info, 2 to log only warnings
