@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+2/11/2017 - Fixed an encoding issue with writing to log; If everyone has an impatience totem, it randomly chooses a player to be lynched; Fixed a bug where cs was not strong enough to prevent night from ending; Fixed a bug where death of 2 or more players would display all except last as a player id rather than a name
+
 2/8/2017 - Changed how debug logs are done to speed up bot considerably; !list is sorted now; Made death message code more efficient; Removed a bunch of unnecessary comments; Added crazy gamemode
 
 2/7/2017 - Fixed a SyntaxWarning with faftergame; Changed how wolfchat works in preparation for other stuff; Fixed uptime's minutes displaying incorrectly

@@ -1181,7 +1181,7 @@ async def log(loglevel, text):
                 3 : '**[ERROR]** <@' + OWNER_ID + '> '
                 }
     logmsg = levelmsg[loglevel] + str(text)
-    with open(LOG_FILE, 'a') as f:
+    with open(LOG_FILE, 'a', encoding='utf-8') as f:
         f.write("[{}] {}\n".format(datetime.now(), logmsg))
     if loglevel >= MIN_LOG_LEVEL:
         await client.send_message(client.get_channel(DEBUG_CHANNEL), logmsg)
@@ -1559,7 +1559,7 @@ async def run_game(message):
             for player in session[1]:
                 if session[1][player][0] and session[1][player][1] in ['seer', 'wolf', 'harlot']:
                     end_night = end_night and (session[1][player][2] != '')
-                if session[1][player][0] and session[1][player][1] in ['shaman', 'crazed_shaman']:
+                if session[1][player][0] and session[1][player][1] in ['shaman', 'crazed shaman']:
                     end_night = end_night and (session[1][player][2] in session[1])
             end_night = end_night or (datetime.now() - session[3][0]).total_seconds() > NIGHT_TIMEOUT
             if end_night:
@@ -1703,7 +1703,7 @@ async def run_game(message):
             killed_msg += "The dead body of **{}**, a **{}**, was found. Those remaining mourn the tragedy.".format(get_name(killed_players[0]), get_role(killed_players[0], 'death'))
         else:
             killed_msg += "The dead bodies of **{}**, and **{}**, a **{}**, were found. Those remaining mourn the tragedy.".format(
-                '**, **'.join([x + '**, a **' + get_role(x, 'death') for x in killed_players[:-1]]), get_name(killed_players[-1]), get_role(killed_players[-1], 'death'))
+                '**, **'.join([get_name(x) + '**, a **' + get_role(x, 'death') for x in killed_players[:-1]]), get_name(killed_players[-1]), get_role(killed_players[-1], 'death'))
         if session[0] and await win_condition() == None:
             await client.send_message(client.get_channel(GAME_CHANNEL), "Night lasted **{0:02d}:{1:02d}**. The villagers wake up and search the village.\n\n{2}".format(
                                                                                     night_elapsed.seconds // 60, night_elapsed.seconds % 60, killed_msg))
