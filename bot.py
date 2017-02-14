@@ -20,11 +20,20 @@ WEREWOLF_NOTIFY_ROLE = None
 ratelimit_dict = {}
 pingif_dict = {}
 notify_me = []
+stasis = {}
 faftergame = None
 starttime = datetime.now()
 with open(NOTIFY_FILE, 'a+') as notify_file:
     notify_file.seek(0)
     notify_me = notify_file.read().split(',')
+
+if os.path.isfile(STASIS_FILE):
+    with open(STASIS_FILE, 'r') as stasis_file:
+        stasis = json.load(stasis_file)
+else:
+    with open(STASIS_FILE, 'a+') as stasis_file:
+        stasis_file.write('{}')
+
 random.seed(datetime.now())
 
 def get_jsonparsed_data(url):
@@ -174,6 +183,10 @@ async def cmd_list(message, parameters):
 async def cmd_join(message, parameters):
     if session[0]:
         return
+    if message.author.id in stasis and stasis[message.author.id] > 0:
+        await reply(message, "You are in stasis for **{}** game{}. Please do not break rules, idle out or use !leave during a game.".format(
+                                stasis[message.author.id], '' if stasis[message.author.id] == 1 else 's'))
+        return
     if len(session[1]) >= MAX_PLAYERS:
         await reply(message, random.choice(lang['maxplayers']).format(MAX_PLAYERS))
         return
@@ -198,6 +211,10 @@ async def cmd_leave(message, parameters):
         session[1][message.author.id][0] = False
         await client.send_message(client.get_channel(GAME_CHANNEL), random.choice(lang['leavedeath']).format(message.author.name, get_role(message.author.id, 'death')))
         await client.remove_roles(client.get_server(WEREWOLF_SERVER).get_member(message.author.id), PLAYERS_ROLE)
+        if message.author.id in stasis:
+            stasis[message.author.id] += 2
+        else:
+            stasis[message.author.id] = 2
         if session[0] and await win_condition() == None:
             await check_traitor()
     else:
@@ -1123,7 +1140,64 @@ async def cmd_uptime(message, parameters):
         reply_msg += "{} {} ".format(output[i][0], output[i][1])
     reply_msg = reply_msg[:-1]
     await reply(message, "Uptime: **{}**".format(reply_msg))
-    
+
+async def cmd_fstasis(message, parameters):
+    if parameters == '':
+        await reply(message, commands['fstasis'][2].format(BOT_PREFIX))
+        return
+    params = parameters.split(' ')
+    player = params[0].strip('<!@>')
+    member = client.get_server(WEREWOLF_SERVER).get_member(player)
+    name = "user not in server with id " + player
+    if member:
+        name = member.display_name
+    if len(params) > 1:
+        action = parameters.split(' ')[1]
+    else:
+        action = ''
+    if len(params) > 2:
+        amount = parameters.split(' ')[2]
+        if amount.isdigit():
+            amount = int(amount)
+        else:
+            amount = -1
+    else:
+        amount = -2
+    if player.isdigit():
+        if action and amount >= -1:
+            if amount >= 0:
+                if player not in stasis:
+                    stasis[player] = 0
+                reply_msg = "Successfully "
+                if action in ['+', 'add', 'give']:
+                    stasis[player] += amount
+                    reply_msg += "increased **{0}** ({1})'s stasis by **{2}**."
+                elif action in ['-', 'remove', 'del']:
+                    amount = min(amount, stasis[player])
+                    stasis[player] -= amount
+                    reply_msg += "decreased **{0}** ({1})'s stasis by **{2}**."
+                elif action in ['=', 'set']:
+                    stasis[player] = amount
+                    reply_msg += "set **{0}** ({1})'s stasis to **{2}**."
+                else:
+                    if player not in stasis:
+                        amount = 0
+                    else:
+                        amount = stasis[player]
+                    reply_msg = "**{0}** ({1}) is in stasis for **{2}** game{3}."
+            else:
+                reply_msg = "Stasis must be a non-negative integer."
+        else:
+            if player not in stasis:
+                amount = 0
+            else:
+                amount = stasis[player]
+            reply_msg = "**{0}** ({1}) is in stasis for **{2}** game{3}."
+    else:
+        reply_msg = "Invalid mention/id: {0}."
+
+    await reply(message, reply_msg.format(name, player, amount, '' if int(amount) == 1 else 's'))
+    await log(2, "{0} ({1}) FSTASIS {2}".format(message.author.name, message.author.id, parameters))
         
 ######### END COMMANDS #############
 
@@ -1236,6 +1310,9 @@ async def end_game(reason):
     session[4] = [timedelta(0), timedelta(0)]
     session[6] = ''
     await client.send_message(client.get_channel(GAME_CHANNEL), msg)
+
+    for stasised in [x for x in stasis if stasis[x] > 0]:
+        stasis[stasised] -= 1
     if faftergame:
         # !faftergame <command> [<parameters>]
         # faftergame.content.split(' ')[0] is !faftergame
@@ -1456,6 +1533,11 @@ async def player_idle(message):
             if msg == None and message.author.id in session[1] and session[0] and session[1][message.author.id][0]:
                 await client.send_message(client.get_channel(GAME_CHANNEL), "**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead. "
                                           "The survivors bury the **" + get_role(message.author.id, 'death') + '**.')
+                if message.author.id in stasis:
+                    stasis[message.author.id] += 2
+                    # 2 because game will end and subtract 1
+                else:
+                    stasis[message.author.id] = 2
                 session[1][message.author.id][0] = False
                 await client.remove_roles(client.get_server(WEREWOLF_SERVER).get_member(message.author.id), PLAYERS_ROLE)
                 await check_traitor()
@@ -1767,7 +1849,7 @@ async def run_game(message):
                 lynched_player = max_voted[0]
         if session[0]:
             day_elapsed = datetime.now() - session[3][1]
-        session[4][1] += day_elapsed
+            session[4][1] += day_elapsed
         lynched_msg = ""
         if lynched_player:
             if lynched_player == 'abstain':
@@ -1872,6 +1954,8 @@ async def backup_settings_loop():
         print("BACKING UP SETTINGS")
         with open(NOTIFY_FILE, 'w') as notify_file:
             notify_file.write(','.join([x for x in notify_me if x != '']))
+        with open(STASIS_FILE, 'w') as stasis_file:
+            json.dump(stasis, stasis_file)
         await asyncio.sleep(BACKUP_INTERVAL)
 
 ############## POST-DECLARATION STUFF ###############
@@ -1939,6 +2023,7 @@ commands = {'shutdown' : [cmd_shutdown, [2, 2], "```\n{0}shutdown takes no argum
             'fother' : [cmd_fother, [1, 2], "```\n{0}fother <player> [<add|remove|set>] [<other1 [other2 ...]>]\n\nManipulates a player's other flag (totems, traitor).```"],
             'faftergame' : [cmd_faftergame, [2, 2], "```\n{0}faftergame <command> [<parameters>]\n\nSchedules <command> to run with [<parameters>] after the next game ends.```"],
             'uptime' : [cmd_uptime, [0, 0], "```\n{0}uptime takes no arguments\n\nChecks the bot's uptime.```"],
+            'fstasis' : [cmd_fstasis, [1, 1], "```\n{0}fstasis <player> [<add|remove|set>] [<amount>]\n\nManipulates a player's stasis.```"],
             'test' : [cmd_test, [1, 0], "test"]}
 
 COMMANDS_FOR_ROLE = {'see' : 'seer',
