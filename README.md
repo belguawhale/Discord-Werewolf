@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+3/9/2017 - Added votes to start; Added voting for gamemodes; Hopefully squashed weird lynch messages after game end for good; Minor spelling fixes
+
 3/3/2017 - I'm alive! Redid how commands are added to the bot to use a decorator instead of a huge dictionary :o; Minor change to printing errors in console; Redid how wins are calculated; Fixed a stupid bug that caused get_role on game end to screw up; CS win condition!!! :D; Weird lynch messages displaying after idle death should be fixed; Added !q as an alias for !leave
 
 2/11/2017 - Fixed an encoding issue with writing to log; If everyone has an impatience totem, it randomly chooses a player to be lynched; Fixed a bug where cs was not strong enough to prevent night from ending; Fixed a bug where death of 2 or more players would display all except last as a player id rather than a name
