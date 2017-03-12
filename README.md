@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+3/12/2017 - Fixed no wolfkill message being displayed when harlot was attacked; Fixed a bug where !retract would display a message even if there was no vote; Forgot to add permissions to the gamemodes command so re-added them; Minor fix to death totem messages so a wolfkill, prot, and death will result in just a wolfkill message; Added some *mysterious* totems
+
 3/9/2017 - Added votes to start; Added voting for gamemodes; Hopefully squashed weird lynch messages after game end for good; Minor spelling fixes
 
 3/3/2017 - I'm alive! Redid how commands are added to the bot to use a decorator instead of a huge dictionary :o; Minor change to printing errors in console; Redid how wins are calculated; Fixed a stupid bug that caused get_role on game end to screw up; CS win condition!!! :D; Weird lynch messages displaying after idle death should be fixed; Added !q as an alias for !leave
