@@ -9,6 +9,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+3/13/2017 - Spelling error smh; Fixed a game-breaking bug where retribution totem stays until end of game; Added more debugging info in case of an error; Fixed a bug where lycanthropy totem and death totem combined with protection and death would cause bot to error; Fixed a bug where no players alive would count as wolfwin
+
 3/12/2017 - Fixed no wolfkill message being displayed when harlot was attacked; Fixed a bug where !retract would display a message even if there was no vote; Forgot to add permissions to the gamemodes command so re-added them; Minor fix to death totem messages so a wolfkill, prot, and death will result in just a wolfkill message; Added some *mysterious* totems
 
 3/9/2017 - Added votes to start; Added voting for gamemodes; Hopefully squashed weird lynch messages after game end for good; Minor spelling fixes
