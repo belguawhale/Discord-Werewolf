@@ -660,8 +660,9 @@ async def cmd_stats(message, parameters):
                     role_dict[reveal][1] = max(0, role_dict[reveal][1] - 1)
 
         reply_msg += "\nCurrent roles: "
-        if 'cursed villager' in orig_roles:
-            del orig_roles['cursed villager']
+        for template in TEMPLATES_ORDERED:
+            if template in orig_roles:
+                del orig_roles[template]
         for role in sort_roles(orig_roles):
             if role_dict[role][0] == role_dict[role][1]:
                 if role_dict[role][0] == 1:
@@ -2290,8 +2291,8 @@ async def run_game():
 
         lynched_player = None
         warn = False
+        totem_dict = {} # For impatience and pacifism        
         while win_condition() == None and session[2] and lynched_player == None and session[0]:
-            totem_dict = {} # For impatience and pacifism
             for player in [x for x in session[1] if session[1][x][0]]:
                 totem_dict[player] = session[1][player][4].count('impatience_totem') - session[1][player][4].count('pacifism_totem')
             vote_dict = get_votes(totem_dict)
@@ -2461,7 +2462,7 @@ for cmd in COMMANDS_FOR_ROLE:
 roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. Type `kill <player>` in private message to kill them."],
          'villager' : ['village', 'villagers', "Your job is to lynch all of the wolves."],
          'seer' : ['village', 'seers', "Your job is to detect the wolves; you may have a vision once per night. Type `see <player>` in private message to see their role."],
-         'cursed villager' : ['template', 'cursed villagers', "This template is hidden and is seen as a wolf by the seer. Roles normally seen as wolf and the seer cannot be cursed."],
+         'cursed villager' : ['template', 'cursed villagers', "This template is hidden and is seen as a wolf by the seer. Roles normally seen as wolf, the seer, and the fool cannot be cursed."],
          'shaman' : ['village', 'shamans', "You select a player to receive a totem each night by using `give <player>`. You may give a totem to yourself, but you may not give the same"
                                            " person a totem two nights in a row. If you do not give the totem to anyone, it will be given to a random player. "
                                            "To see your current totem, use the command `myrole`."],

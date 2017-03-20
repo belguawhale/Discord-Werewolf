@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+3/20/2017 - Fixed !stats; Fixed a minor timing issue with !fnight and day cycle of run_game
+
 3/19/2017 - MASSIVE UPDATE! Slightly redid how gamemodes are stored and processed; Added !verifygamemode command to ensure gamemodes are valid; !role command can now return information on gamemodes other than default; Made a common function between !myrole and the initial role pms; Fixed !myrole; Re-did a small section on how commands are processed in preparation for more roles that share commands (e.g. oracle and seer would both use !see); Added gunner template; Added role guide and role table; Added injured mechanic to go with gunner; Fixed an annoying bug where traitor turn message would play after game was over; Rebalanced gamemodes to include gunner template
 
 3/13/2017 - Spelling error smh; Fixed a game-breaking bug where retribution totem stays until end of game; Added more debugging info in case of an error; Fixed a bug where lycanthropy totem and death totem combined with protection and death would cause bot to error; Fixed a bug where no players alive would count as wolfwin
