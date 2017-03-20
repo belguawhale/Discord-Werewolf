@@ -6,3 +6,9 @@ DAY_TIMEOUT = 600
 NIGHT_WARNING = 90
 NIGHT_TIMEOUT = 120
 GAME_START_TIMEOUT = 60 * 30 # 30 minutes
+GUNNER_MISS = 1
+GUNNER_SUICIDE = 1
+GUNNER_HEADSHOT = 2
+GUNNER_INJURE = 3
+GUNNER_MULTIPLIER = 0.12 # bullets = ceil(num players * multiplier)
+GUNNER_REVENGE_WOLF = 0.25 # chance that gunner will kill wolf
