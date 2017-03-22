@@ -259,22 +259,21 @@ async def cmd_fjoin(message, parameters):
         return
     raw_members = parameters.split(' ')
     join_list = []
-    join_names = []
     for member in raw_members:
         if member.strip('<!@>').isdigit():
-            if isinstance(client.get_server(WEREWOLF_SERVER).get_member(member.strip('<!@>')), discord.Member):
-                join_list.append(member.strip('<!@>'))
-                join_names.append(client.get_server(WEREWOLF_SERVER).get_member(member.strip('<!@>')).name)
-            else:
-                join_list.append(member.strip('<!@>'))
-                join_names.append(member.strip('<!@>'))
+            join_list.append(member.strip('<!@>'))
+        elif '-' in member:
+            left = member.split('-')[0]
+            right = member.split('-')[1]
+            if left.isdigit() and right.isdigit():
+                join_list += list(map(str, range(int(left), int(right) + 1)))
     if join_list == []:
         await reply(message, "ERROR: no valid mentions found")
         return
     join_msg = ""
-    for i, member in enumerate(join_list):
+    for member in sort_players(join_list):
         session[1][member] = [True, '', '', [], []]
-        join_msg += "**" + join_names[i] + "** was forced to join the game.\n"
+        join_msg += "**" + get_name(member) + "** was forced to join the game.\n"
         if client.get_server(WEREWOLF_SERVER).get_member(member):
             await client.add_roles(client.get_server(WEREWOLF_SERVER).get_member(member), PLAYERS_ROLE)
     join_msg += "New player count: **{}**".format(len(session[1]))
@@ -296,11 +295,17 @@ async def cmd_fleave(message, parameters):
         for member in raw_members:
             if member.strip('<!@>').isdigit():
                 leave_list.append(member.strip('<!@>'))
+            elif '-' in member:
+                left = member.split('-')[0]
+                right = member.split('-')[1]
+                if left.isdigit() and right.isdigit():
+                    leave_list += list(map(str, range(int(left), int(right) + 1)))
     if leave_list == []:
         await reply(message, "ERROR: no valid mentions found")
         return
     leave_msg = ""
-    for i, member in enumerate(leave_list):
+
+    for member in sort_players(leave_list):
         if member in list(session[1]):
             if session[0]:
                 session[1][member][0] = False
@@ -315,7 +320,7 @@ async def cmd_fleave(message, parameters):
         if len(session[1]) == 0:
             await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
     await client.send_message(client.get_channel(GAME_CHANNEL), leave_msg)
-    await log(2, "{0} ({1}) used fleave {2}".format(message.author.name, message.author.id, parameters))
+    await log(2, "{0} ({1}) used FLEAVE {2}".format(message.author.name, message.author.id, parameters))
     if session[0] and win_condition() == None:
         await check_traitor()
 
@@ -595,8 +600,8 @@ async def cmd_stats(message, parameters):
         reply_msg = "It is now **" + ("day" if session[2] else "night") + "time**. Using the **{}** gamemode.".format(session[6])
         reply_msg += "\n**" + str(len(session[1])) + "** players playing: **" + str(len([x for x in session[1] if session[1][x][0]])) + "** alive, "
         reply_msg += "**" + str(len([x for x in session[1] if not session[1][x][0]])) + "** dead\n"
-        reply_msg += "```basic\nLiving players:\n" + "\n".join(sorted([get_name(x) + ' (' + x + ')' for x in session[1] if session[1][x][0]])) + '\n'
-        reply_msg += "Dead players:\n" + "\n".join(sorted([get_name(x) + ' (' + x + ')' for x in session[1] if not session[1][x][0]])) + '\n'
+        reply_msg += "```basic\nLiving players:\n" + "\n".join(get_name(x) + ' (' + x + ')' for x in sort_players(session[1]) if session[1][x][0]) + '\n'
+        reply_msg += "Dead players:\n" + "\n".join(get_name(x) + ' (' + x + ')' for x in sort_players(session[1]) if not session[1][x][0]) + '\n'
 
         orig_roles = get_roles(session[6], len(session[1]))
         role_dict = {}
@@ -676,22 +681,17 @@ async def cmd_stats(message, parameters):
         reply_msg = reply_msg.rstrip(", ") + "```"
         await reply(message, reply_msg)
     else:
-        formatted_list = []
-        for player in list(session[1]):
-            if client.get_server(WEREWOLF_SERVER).get_member(player):
-                formatted_list.append(client.get_server(WEREWOLF_SERVER).get_member(player).name + ' (' + player + ')')
-            else:
-                formatted_list.append(player + ' (' + player + ')')
+        players = ["{} ({})".format(get_name(x), x) for x in sort_players(session[1])]
         num_players = len(session[1])
         if num_players == 0:
             await client.send_message(message.channel, "There is currently no active game. Try {}join to start a new game!".format(BOT_PREFIX))
         else:
-            await client.send_message(message.channel, str(len(session[1])) + " players in lobby: ```\n" + "\n".join(sorted(formatted_list)) + "```")
+            await client.send_message(message.channel, "{} players in lobby: ```\n{}\n```".format(num_players, '\n'.join(players)))
 
 @cmd('revealroles', [1, 1], "```\n{0}revealroles takes no arguments\n\nDisplays what each user's roles are and sends it in pm.```")
 async def cmd_revealroles(message, parameters):
     msg = "```diff\n"
-    for player in sorted(list(session[1])):
+    for player in sort_players(session[1]):
         msg += "{} ".format('+' if session[1][player][0] else '-') + get_name(player) + ' (' + player + '): ' + get_role(player, 'actual')
         msg += "; action: " + session[1][player][2] + "; other: " + ' '.join(session[1][player][4]) + "\n"
     msg += "```"
@@ -1436,7 +1436,7 @@ async def cmd_fstasis(message, parameters):
 
 @cmd('gamemodes', [0, 0], "```\n{0}gamemodes takes no arguments\n\nDisplays a list of gamemodes.```", 'games')
 async def cmd_gamemodes(message, parameters):
-    await reply(message, "Available gamemodes: {}".format(', '.join(sorted(gamemodes.keys()))))
+    await reply(message, "Available gamemodes: {}".format(', '.join(sorted(gamemodes))))
 
 @cmd('verifygamemode', [1, 1], "```\n{0}verifygamemode [<gamemode>]\n\nChecks to make sure [<gamemode>] is valid.```", 'verifygamemodes')
 async def cmd_verifygamemode(message, parameters):
@@ -1452,7 +1452,10 @@ async def cmd_shoot(message, parameters):
     if not session[0] or message.author.id not in session[1] or not session[1][message.author.id][0]:
         return
     if 'gunner' not in get_role(message.author.id, 'templates'):
-        await reply(message, "You don't have a gun.")
+        try:
+            await client.send_message(message.author, "You don't have a gun.")
+        except discord.Forbidden:
+            pass
         return
     if not session[2]:
         try:
@@ -1462,12 +1465,15 @@ async def cmd_shoot(message, parameters):
         finally:
             return
     msg = ''
+    pm = False
     ded = None
     if session[1][message.author.id][4].count('bullet') < 1:
         msg = "You have no more bullets."
+        pm = True
     else:
         if parameters == "":
             msg = commands['shoot'][2].format(BOT_PREFIX)
+            pm = True
         else:
             target = get_player(parameters.split(' ')[0])
             if not target:
@@ -1515,8 +1521,16 @@ async def cmd_shoot(message, parameters):
 
                 await log(1, "{} ({}) SHOOT {} ({}) WITH OUTCOME {}".format(get_name(message.author.id), message.author.id,
                     get_name(target), target, outcome))
-                
-    await client.send_message(client.get_channel(GAME_CHANNEL), msg)
+
+    if pm:
+        target = message.author
+    else:
+        target = client.get_channel(GAME_CHANNEL)
+    try:
+        await client.send_message(target, msg)
+    except discord.Forbidden:
+        pass
+
     if ded:
         session[1][ded][0] = False
         member = client.get_server(WEREWOLF_SERVER).get_member(ded)
@@ -1645,7 +1659,7 @@ async def end_game(reason, winners=None):
             # ALTERNATE WIN CONDITIONS
             if session[1][player][0] and get_role(player, 'role') == 'crazed shaman':
                 winners.append(player)
-        winners = sorted(winners, key=get_name)
+        winners = sort_players(winners)
         if len(winners) == 0:
             msg += "No one wins!"
         elif len(winners) == 1:
@@ -1716,21 +1730,21 @@ def end_game_stats():
         if 'traitor' in session[1][player][4]:
             session[1][player][1] = 'traitor'
             session[1][player][4].remove('traitor')
-        role_dict[session[1][player][1]].append(get_name(player))
+        role_dict[session[1][player][1]].append(player)
         if 'cursed' in session[1][player][3]:
-            role_dict['cursed villager'].append(get_name(player))
+            role_dict['cursed villager'].append(player)
         if 'gunner' in session[1][player][3]:
-            role_dict['gunner'].append(get_name(player))
+            role_dict['gunner'].append(player)
     for key in sort_roles(role_dict):
-        value = role_dict[key]
+        value = sort_players(role_dict[key])
         if len(value) == 0:
             pass
         elif len(value) == 1:
-            role_msg += "The **" + key + "** was **" + value[0] + "**. "
+            role_msg += "The **{}** was **{}**.".format(key, get_name(value[0]))
         elif len(value) == 2:
-            role_msg += "The **" + roles[key][1] + "** were **" + value[0] + "** and **" + value[1] + "**. "
+            role_msg += "The **{}** were **{}** and **{}**.".format(roles[key][1], get_name(value[0]), get_name(value[1]))
         else:
-            role_msg += "The **" + roles[key][1] + "** were **" + "**, **".join(value[:-1]) + "**, and **" + value[-1] + "**. "
+            role_msg += "The **{}** were **{}**, and **{}**.".format(roles[key][1], '**, **'.join(map(get_name, value[:-1])), get_name(value[-1]))
     return role_msg
 
 def get_name(player):
@@ -1775,6 +1789,16 @@ def get_player(string):
     if len(nicks_contains) == 1:
         return nicks_contains[0]
     return None
+
+def sort_players(players):
+    fake = []
+    real = []
+    for player in players:
+        if client.get_server(WEREWOLF_SERVER).get_member(player):
+            real.append(player)
+        else:
+            fake.append(player)
+    return sorted(real, key=get_name) + sorted(fake, key=int)
 
 def get_role(player, level):
     # level: {team: reveal team only; actualteam: actual team; seen: what the player is seen as; death: role taking into account cursed and cultist and traitor; actual: actual role}
@@ -2010,6 +2034,14 @@ async def run_game():
                               "Using the **{}** game mode with **{}** players.\nAll players check for PMs from me for instructions. "
                               "If you did not receive a pm, please let {} know.".format(session[6], len(session[1]), client.get_server(WEREWOLF_SERVER).get_member(OWNER_ID).name))
     await assign_roles(session[6])
+    await game_loop()
+
+async def game_loop(ses=None):
+    if ses:
+        await client.send_message(client.get_channel(GAME_CHANNEL), PLAYERS_ROLE.mention + ", Welcome to Werewolf, the popular detective/social party game (a theme of Mafia). "
+                              "Using the **{}** game mode with **{}** players.\nAll players check for PMs from me for instructions. "
+                              "If you did not receive a pm, please let {} know.".format(session[6], len(session[1]), client.get_server(WEREWOLF_SERVER).get_member(OWNER_ID).name))
+        globals()['session'] = ses
     await log(1, str(session))
     first_night = True
     # GAME START
@@ -2268,7 +2300,7 @@ async def run_game():
         if session[0] and win_condition() == None:
             await check_traitor()
         
-        if wolf_killed and 'gunner' in get_role(wolf_killed, 'templates') and session[1][wolf_killed][4].count('bullet') > 0:
+        if wolf_killed and 'gunner' in get_role(wolf_killed, 'templates') and wolf_killed not in wolf_turn and session[1][wolf_killed][4].count('bullet') > 0:
             give_gun_targets = [x for x in session[1] if session[1][x][0] and get_role(x, 'role') in ['wolf', 'traitor']]
             if len(give_gun_targets) > 0:
                 give_gun = random.choice(give_gun_targets)
@@ -2293,7 +2325,7 @@ async def run_game():
         warn = False
         totem_dict = {} # For impatience and pacifism        
         while win_condition() == None and session[2] and lynched_player == None and session[0]:
-            for player in [x for x in session[1] if session[1][x][0]]:
+            for player in [x for x in session[1]]:
                 totem_dict[player] = session[1][player][4].count('impatience_totem') - session[1][player][4].count('pacifism_totem')
             vote_dict = get_votes(totem_dict)
             if vote_dict['abstain'] >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) / 2:
@@ -2314,7 +2346,7 @@ async def run_game():
                                           "decision; if darkness falls before they have done so, the majority will win the vote. No one will be lynched if "
                                           "there are no votes or an even split.**")
             await asyncio.sleep(0.1)
-        if not lynched_player:
+        if not lynched_player and win_condition() == None and session[0]:
             vote_dict = get_votes(totem_dict)
             max_votes = max([vote_dict[x] for x in vote_dict])
             max_voted = []
