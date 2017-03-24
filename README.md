@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+3/23/2017 - Added werecrow and gunners to chaos (in chaos, anyone could be gunner); Added !frevive command for debugging purposes
+
 3/21/2017 - Fixed a possible issue with abusing gunner mechanics; Fixed a serious issue with game ending on sunrise causing bot to error; Made the game loop its own function for debugging purposes; Fixed wolves stealing a lycan'd gunner's gun; Buffed !fjoin to allow ranges of fake players; All commands with lists of players are now sorted!
 
 3/20/2017 - Fixed !stats; Fixed a minor timing issue with !fnight and day cycle of run_game
