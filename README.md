@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+3/24/2017 - Fixed a serious bug with influence totem attempting to lynch dead players; Fixed a minor bug with dead players with impatience totem still playing impatience message
+
 3/23/2017 - Added werecrow and gunners to chaos (in chaos, anyone could be gunner); Added !frevive command for debugging purposes
 
 3/21/2017 - Fixed a possible issue with abusing gunner mechanics; Fixed a serious issue with game ending on sunrise causing bot to error; Made the game loop its own function for debugging purposes; Fixed wolves stealing a lycan'd gunner's gun; Buffed !fjoin to allow ranges of fake players; All commands with lists of players are now sorted!

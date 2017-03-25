@@ -1936,7 +1936,7 @@ def get_votes(totem_dict):
     for player in able_voters:
         if session[1][player][2] in vote_dict:
             vote_dict[session[1][player][2]] += 1
-        if 'influence_totem' in session[1][player][4] and session[1][player][2] not in ['']:
+        if 'influence_totem' in session[1][player][4] and session[1][player][2] in vote_dict:
             vote_dict[session[1][player][2]] += 1
     for player in [x for x in able_players if totem_dict[x] != 0]:
         if totem_dict[player] < 0:
@@ -2424,12 +2424,12 @@ async def game_loop(ses=None):
         lynched_msg = ""
         if lynched_player and win_condition() == None and session[0]:
             if lynched_player == 'abstain':
-                for player in [x for x in totem_dict if totem_dict[x] < 0]:
+                for player in [x for x in totem_dict if session[1][x][0] and totem_dict[x] < 0]:
                     lynched_msg += "**{}** meekly votes to not lynch anyone today.\n".format(get_name(player))
                 lynched_msg += "The village has agreed to not lynch anyone today."
                 await client.send_message(client.get_channel(GAME_CHANNEL), lynched_msg)
             else:
-                for player in [x for x in totem_dict if totem_dict[x] > 0 and x != lynched_player]:
+                for player in [x for x in totem_dict if session[1][x][0] and totem_dict[x] > 0 and x != lynched_player]:
                     lynched_msg += "**{}** impatiently votes to lynch **{}**.\n".format(get_name(player), get_name(lynched_player))
                 lynched_msg += '\n'
                 if 'revealing_totem' in session[1][lynched_player][4]:
