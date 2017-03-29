@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+3/29/2017 - Added werekitten and belungas; Added -fleave flag to !shutdown
+
 3/24/2017 - Fixed a serious bug with influence totem attempting to lynch dead players; Fixed a minor bug with dead players with impatience totem still playing impatience message
 
 3/23/2017 - Added werecrow and gunners to chaos (in chaos, anyone could be gunner); Added !frevive command for debugging purposes
