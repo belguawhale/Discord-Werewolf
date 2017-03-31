@@ -14,7 +14,8 @@ import urllib.request
 
 ################## START INIT #####################
 client = discord.Client()
-session = [False, {}, False, [0, 0], [timedelta(0), timedelta(0)], 0, '']
+# [playing?, {players dict}, day?, [night start, day start], [night elapsed, day elapsed], first join, gamemode, {original roles amount}]
+session = [False, {}, False, [0, 0], [timedelta(0), timedelta(0)], 0, '', {}]
 PLAYERS_ROLE = None
 ADMINS_ROLE = None
 WEREWOLF_NOTIFY_ROLE = None
@@ -399,6 +400,8 @@ async def cmd_fstop(message, parameters):
                 await client.remove_roles(member, PLAYERS_ROLE)
         session[3] = [0, 0]
         session[4] = [timedelta(0), timedelta(0)]
+        session[6] = ''
+        session[7] = {}
         await client.send_message(client.get_channel(GAME_CHANNEL), msg)
         return
     else:
@@ -465,8 +468,10 @@ async def cmd_role(message, parameters):
         await reply(message, "Roles: " + ", ".join(sort_roles(roles)))
         return
     elif parameters == "" and session[0]:
-        msg = "**{}** players playing **{}** gamemode:```\n".format(len(session[1]), session[6])
-        game_roles = get_roles(session[6], len(session[1]))
+        msg = "**{}** players playing **{}** gamemode:```\n".format(len(session[1]), 
+        'roles' if session[6].startswith('roles') else session[6])
+        game_roles = dict(session[7])
+
         msg += '\n'.join(["{}: {}".format(x, game_roles[x]) for x in sort_roles(game_roles)])
         msg += '```'
         await reply(message, msg)
@@ -598,13 +603,15 @@ async def cmd_myrole(message, parameters):
 @cmd('stats', [0, 0], "```\n{0}stats takes no arguments\n\nLists current players in the lobby during the join phase, and lists game information in-game.```")
 async def cmd_stats(message, parameters):
     if session[0]:
-        reply_msg = "It is now **" + ("day" if session[2] else "night") + "time**. Using the **{}** gamemode.".format(session[6])
+        reply_msg = "It is now **" + ("day" if session[2] else "night") + "time**. Using the **{}** gamemode.".format(
+            'roles' if session[6].startswith('roles') else session[6])
         reply_msg += "\n**" + str(len(session[1])) + "** players playing: **" + str(len([x for x in session[1] if session[1][x][0]])) + "** alive, "
         reply_msg += "**" + str(len([x for x in session[1] if not session[1][x][0]])) + "** dead\n"
         reply_msg += "```basic\nLiving players:\n" + "\n".join(get_name(x) + ' (' + x + ')' for x in sort_players(session[1]) if session[1][x][0]) + '\n'
         reply_msg += "Dead players:\n" + "\n".join(get_name(x) + ' (' + x + ')' for x in sort_players(session[1]) if not session[1][x][0]) + '\n'
 
-        orig_roles = get_roles(session[6], len(session[1]))
+        orig_roles = dict(session[7])
+        # make a copy
         role_dict = {}
         traitorvill = 0
         traitor_turned = False
@@ -626,8 +633,8 @@ async def cmd_stats(message, parameters):
         # ^ saved this beast for posterity
 
         reply_msg += "Total roles: "
-        total_roles = get_roles(session[6], len(session[1]))
-        reply_msg += ', '.join(["{}: {}".format(x, total_roles[x]) for x in sort_roles(total_roles)])
+        total_roles = dict(orig_roles)
+        reply_msg += ', '.join("{}: {}".format(x, total_roles[x]) for x in sort_roles(total_roles))
 
         for role in list(role_dict):
             # list is used to make a copy
@@ -1254,15 +1261,26 @@ async def cmd_fgame(message, parameters):
             await reply(message, "Successfully unset gamemode.")
         else:
             await reply(message, "Gamemode has not been set.")
-        return
     else:
-        for gamemode in gamemodes:
-            if gamemode.startswith(parameters):
-                parameters = gamemode
-                session[6] = gamemode
-                await reply(message, "Successfuly set gamemode to **{}**.".format(parameters))
-                return
-    await reply(message, "Could not find gamemode {}".format(parameters))
+        if parameters.startswith('roles'):
+            role_string = ' '.join(parameters.split(' ')[1:])
+            if role_string == '':
+                await reply(message, "`{}fgame roles wolf:1,traitor:1,shaman:2,cursed villager:2,etc.`".format(BOT_PREFIX))
+            else:
+                session[6] = parameters
+                await reply(message, "Successfully set gamemode roles to `{}`".format(role_string))
+        else:
+            choices = []
+            for gamemode in gamemodes:
+                if gamemode.startswith(parameters):
+                    choices.append(gamemode)
+            if len(choices) == 1:
+                session[6] = choices[0]
+                await reply(message, "Successfuly set gamemode to **{}**.".format(choices[0]))
+            elif len(choices) > 1:
+                await reply(message, "Multiple choices: {}".format(', '.join(choices)))
+            else:
+                await reply(message, "Could not find gamemode {}".format(parameters))
     await log(2, "{0} ({1}) FGAME {2}".format(message.author.name, message.author.id, parameters))
 
 @cmd('github', [0, 0], "```\n{0}github takes no arguments\n\nReturns a link to the bot's Github repository.```")
@@ -1678,11 +1696,54 @@ async def log(loglevel, text):
     if loglevel >= MIN_LOG_LEVEL:
         await client.send_message(client.get_channel(DEBUG_CHANNEL), logmsg)
 
+def balance_roles(massive_role_list, default_role='villager'):
+    extra_players = len(session[1]) - len(massive_role_list)
+    if extra_players > 0:
+        massive_role_list += [default_role] * extra_players
+        return (massive_role_list, "Not enough roles; added {} {} to role list".format(extra_players, default_role))
+    elif extra_players < 0:
+        random.shuffle(massive_role_list)
+        removed_roles = []
+        team_roles = [0, 0, 0]
+        for role in massive_role_list:
+            if role in WOLF_ROLES_ORDERED:
+                team_roles[0] += 1
+            elif role in VILLAGE_ROLES_ORDERED:
+                team_roles[1] += 1
+            elif role in NEUTRAL_ROLES_ORDERED:
+                team_roles[2] += 1
+        for i in range(-1 * extra_players):
+            team_fractions = list(x / len(massive_role_list) for x in team_roles)
+            roles_to_remove = set()
+            if team_fractions[0] > 0.35:
+                roles_to_remove |= set(WOLF_ROLES_ORDERED)
+            if team_fractions[1] > 0.7:
+                roles_to_remove |= set(VILLAGE_ROLES_ORDERED)
+            if team_fractions[2] > 0.15:
+                roles_to_remove |= set(NEUTRAL_ROLES_ORDERED)
+            if len(roles_to_remove) == 0:
+                roles_to_remove = set(roles)
+                if team_fractions[0] < 0.25:
+                    roles_to_remove -= set(WOLF_ROLES_ORDERED)
+                if team_fractions[1] < 0.5:
+                    roles_to_remove -= set(VILLAGE_ROLES_ORDERED)
+                if team_fractions[2] < 0.05:
+                    roles_to_remove -= set(NEUTRAL_ROLES_ORDERED)
+                if len(roles_to_remove) == 0:
+                    roles_to_remove = set(roles)
+            for role in massive_role_list[:]:
+                if role in roles_to_remove:
+                    massive_role_list.remove(role)
+                    removed_roles.append(role)
+                    break
+        return (massive_role_list, "Too many roles; removed {} from the role list".format(', '.join(sort_roles(removed_roles))))
+    return (massive_role_list, '')
+
 async def assign_roles(gamemode):
     massive_role_list = []
     gamemode_roles = get_roles(gamemode, len(session[1]))
 
-    if 'wolf' not in gamemode_roles:
+    if 'wolf' not in gamemode_roles and not gamemode.startswith('roles'):
         # Invalid number of players for gamemode
         gamemode_roles = get_roles('default', len(session[1])) # Fallback
         session[6] = 'default'
@@ -1690,22 +1751,31 @@ async def assign_roles(gamemode):
     # Generate list of roles
     
     for role in gamemode_roles:
-        if role not in TEMPLATES_ORDERED:
-            for i in range(gamemode_roles[role]):
-                massive_role_list.append(role)
-    for i in range(len(session[1]) - len(massive_role_list)):
-        massive_role_list.append('villager')
+        if role in roles and role not in TEMPLATES_ORDERED:
+            massive_role_list += [role] * gamemode_roles[role]
+    
+    massive_role_list, debugmessage = balance_roles(massive_role_list)
+    if debugmessage != '':
+        await log(2, debugmessage)
+    
+    if session[6].startswith('roles'):
+        session[7] = dict((x, massive_role_list.count(x)) for x in roles if x in massive_role_list)
+    else:
+        session[7] = dict(gamemode_roles)
+
     random.shuffle(massive_role_list)
-    for player in list(session[1]):
+    for player in session[1]:
         session[1][player][1] = massive_role_list.pop()
     for i in range(gamemode_roles['cursed villager'] if 'cursed villager' in gamemode_roles else 0):
-        cursed = random.choice([x for x in session[1] if get_role(x, 'role') not in ['wolf', 'werecrow', 'seer', 'fool'] and 'cursed' not in session[1][x][3]])
+        cursed = random.choice([x for x in session[1] if get_role(x, 'role') not in\
+        ['wolf', 'werecrow', 'seer', 'fool'] and 'cursed' not in session[1][x][3]])
         session[1][cursed][3].append('cursed')
     for i in range(gamemode_roles['gunner'] if 'gunner' in gamemode_roles else 0):
         if gamemode in ['chaos']:
             pewpew = random.choice([x for x in session[1] if 'gunner' not in session[1][x][3]])
         else:
-            pewpew = random.choice([x for x in session[1] if get_role(x, 'role') not in WOLF_ROLES_ORDERED + ['fool'] and 'gunner' not in session[1][x][3]])
+            pewpew = random.choice([x for x in session[1] if get_role(x, 'role') not in \
+            WOLF_ROLES_ORDERED + NEUTRAL_ROLES_ORDERED and 'gunner' not in session[1][x][3]])
         session[1][pewpew][3].append('gunner')
         session[1][pewpew][4] += ['bullet'] * int(GUNNER_MULTIPLIER * len(session[1]) + 1)
     if gamemode == 'belunga':
@@ -1754,6 +1824,7 @@ async def end_game(reason, winners=None):
     session[3] = [0, 0]
     session[4] = [timedelta(0), timedelta(0)]
     session[6] = ''
+    session[7] = {}
 
     for stasised in [x for x in stasis if stasis[x] > 0]:
         stasis[stasised] -= 1
@@ -1929,7 +2000,26 @@ def get_role(player, level):
     return None
 
 def get_roles(gamemode, players):
-    if gamemode in gamemodes and players in range(MIN_PLAYERS, MAX_PLAYERS + 1):
+    if gamemode.startswith('roles'):
+        role_string = ' '.join(gamemode.split(' ')[1:])
+        if role_string != '':
+            gamemode_roles = {}
+            separator = ','
+            if ';' in role_string:
+                separator = ';'
+            for role_piece in role_string.split(separator):
+                piece = role_piece.strip()
+                if '=' in piece:
+                    role, amount = piece.split('=')
+                elif ':' in piece:
+                    role, amount = piece.split(':')
+                else:
+                    return None
+                amount = amount.strip()
+                if amount.isdigit():
+                    gamemode_roles[role.strip()] = int(amount)
+            return gamemode_roles
+    elif gamemode in gamemodes and players in range(MIN_PLAYERS, MAX_PLAYERS + 1):
         gamemode_roles = {}
         for role in roles:
             if role in gamemodes[gamemode] and gamemodes[gamemode][role][players - MIN_PLAYERS] > 0:
@@ -2051,7 +2141,7 @@ def is_online(user_id):
     return False
 
 async def check_traitor():
-    if not session[0]:
+    if not session[0] and win_condition() == None:
         return
     for other in [session[1][x][4] for x in session[1]]:
         if 'traitor' in other:
@@ -2076,8 +2166,12 @@ async def check_traitor():
                     pass
         await client.send_message(client.get_channel(GAME_CHANNEL), "**The villagers, during their celebrations, are frightened as they hear a loud howl. The wolves are not gone!**")        
 
-def sort_roles(roles):
-    return [x for x in WOLF_ROLES_ORDERED + VILLAGE_ROLES_ORDERED + NEUTRAL_ROLES_ORDERED + TEMPLATES_ORDERED if x in roles]
+def sort_roles(role_list):
+    role_list = list(role_list)
+    result = []
+    for role in WOLF_ROLES_ORDERED + VILLAGE_ROLES_ORDERED + NEUTRAL_ROLES_ORDERED + TEMPLATES_ORDERED:
+        result += [role] * role_list.count(role)
+    return result
 
 async def run_game():
     await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.dnd)
@@ -2092,7 +2186,7 @@ async def run_game():
             elif vote != '':
                 vote_dict[vote] = 1
         for gamemode in vote_dict:
-            if vote_dict[gamemode] >= len(session[1]) // 2 + 1:
+            if vote_dict[gamemode] >= len(session[1]) // 2 + 1 and gamemode != 'belunga':
                 session[6] = gamemode
                 break
         else:
@@ -2108,7 +2202,8 @@ async def run_game():
     await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
     await client.send_message(client.get_channel(GAME_CHANNEL), PLAYERS_ROLE.mention + ", Welcome to Werewolf, the popular detective/social party game (a theme of Mafia). "
                               "Using the **{}** game mode with **{}** players.\nAll players check for PMs from me for instructions. "
-                              "If you did not receive a pm, please let {} know.".format(session[6], len(session[1]), client.get_server(WEREWOLF_SERVER).get_member(OWNER_ID).name))
+                              "If you did not receive a pm, please let {} know.".format('roles' if session[6].startswith('roles') else session[6],
+                              len(session[1]), client.get_server(WEREWOLF_SERVER).get_member(OWNER_ID).name))
     await assign_roles(session[6])
     await game_loop()
 
@@ -2205,7 +2300,9 @@ async def game_loop(ses=None):
         # BELUNGA
         for player in [x for x in session[1] if session[1][x][0]]:
             for i in range(session[1][player][4].count('belunga_totem')):
-                session[1][player][4].append(random.choice(list(totems) + ['belunga_totem']))
+                session[1][player][4].append(random.choice(list(totems) + ['belunga_totem', 'bullet']))
+                if random.random() < 0.1 and 'gunner' not in get_role(player, 'templates'):
+                    session[1][player][3].append('gunner')
 
         # Wolf kill
         wolf_votes = {}
@@ -2551,6 +2648,8 @@ async def game_start_timeout_loop():
                 await client.remove_roles(member, PLAYERS_ROLE)
         session[3] = [0, 0]
         session[4] = [timedelta(0), timedelta(0)]
+        session[6] = ''
+        session[7] = {}
 
 async def backup_settings_loop():
     while not client.is_closed:

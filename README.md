@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+3/31/2017 - Added roles gamemode that allows you to select an arbitrary roleset using !fgame; Fixed sort_roles; Fixed up !fgame slightly; Fixed neutral roles having a gun; Fixed !stats in roles gamemode; Made session[7] contain a role dict of roles in the current game
+
 3/29/2017 - Added werekitten and belungas; Added -fleave flag to !shutdown
 
 3/24/2017 - Fixed a serious bug with influence totem attempting to lynch dead players; Fixed a minor bug with dead players with impatience totem still playing impatience message
