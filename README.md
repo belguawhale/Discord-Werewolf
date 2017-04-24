@@ -2,7 +2,7 @@
 Discord Werewolf is a bot that runs the game Werewolf (Mafia) on Discord. It is written in Python using discord.py. You can find me on Discord as belungawhale#4813.
 
 ## Setting the bot up
-Clone this repository and fill in the fields inside config.py. To change some settings, edit settings.py.
+Clone this repository and fill in the fields inside config.py. To change some settings, edit settings.py. This bot requires at least Python 3.5 to run.
 
 ## Dependencies
 Discord Werewolf has hard dependencies on discord.py and aiohttp. You can run `pip install -r requirements.txt` to install the required dependencies.
@@ -11,6 +11,8 @@ Discord Werewolf has hard dependencies on discord.py and aiohttp. You can run `p
 You must first create a new bot account at https://discordapp.com/developers/applications/me. Put the bot's token inside config.py. If you are running on Windows, run `python bot.py` or double-click run.bat to launch the auto-restarter (it will restart the bot if it crashes for whatever reason). If you are running on a UNIX-based system, run either `python3 bot.py` or `python3.5 bot.py`.
 
 ## Changelog
+
+4/24/2017 - Fixed injured traitor and no other wolfteam ending the game in a villwin (injured mechanic should only apply to wolfwin); Fixed multiple gunner templates being applied to a wolf that kills multiple gunners; Any gunner death caused by wolf allows wolf to steal gun (harlot-gunner visiting wolf/victim), and wolf targeting gunner-harlot while they are visiting will not allow wolf to steal gun; Night deaths and a whole slew of more things are now sorted; Lycanthropy now works on harlot visiting wolf, harlot visiting victim; Added a new CS totem
 
 4/7/2017 - Rebalanced default slightly; Disabled restrictions on voting for belunga mode; Added hunter; Added hunter to gamemodes
 
