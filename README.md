@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+5/1/2017 - Added random gamemode and gamemode descriptions; Made a common function to do autocompletion; Added autocompletion for role names and gamemodes; Added !game command to view information on gamemodes; Fixed a few minor bugs with gamemode minimum and maximum players
+
 4/24/2017 - Fixed injured traitor and no other wolfteam ending the game in a villwin (injured mechanic should only apply to wolfwin); Fixed multiple gunner templates being applied to a wolf that kills multiple gunners; Any gunner death caused by wolf allows wolf to steal gun (harlot-gunner visiting wolf/victim), and wolf targeting gunner-harlot while they are visiting will not allow wolf to steal gun; Night deaths and a whole slew of more things are now sorted; Lycanthropy now works on harlot visiting wolf, harlot visiting victim; Added a new CS totem
 
 4/7/2017 - Rebalanced default slightly; Disabled restrictions on voting for belunga mode; Added hunter; Added hunter to gamemodes

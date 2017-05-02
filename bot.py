@@ -345,7 +345,8 @@ async def cmd_refresh(message, parameters):
     lang = temp_lang
     await reply(message, 'The messages with language code `' + codeset + '` have been refreshed from GitHub.')
 
-@cmd('start', [0, 1], "```\n{0}start takes no arguments\n\nVotes to start the game. A game needs at least " + str(MIN_PLAYERS) + " players to start.```")
+@cmd('start', [0, 1], "```\n{0}start takes no arguments\n\nVotes to start the game. A game needs at least " +\
+                      str(MIN_PLAYERS) + " players to start.```")
 async def cmd_start(message, parameters):
     if session[0]:
         return
@@ -470,20 +471,28 @@ async def cmd_role(message, parameters):
     elif parameters == "" and session[0]:
         msg = "**{}** players playing **{}** gamemode:```\n".format(len(session[1]),
         'roles' if session[6].startswith('roles') else session[6])
+        if session[6] in ('random',):
+            msg += "!role is disabled for the {} gamemode.\n```".format(session[6])
+            await reply(message, msg)
+            return
+
         game_roles = dict(session[7])
 
         msg += '\n'.join(["{}: {}".format(x, game_roles[x]) for x in sort_roles(game_roles)])
         msg += '```'
         await reply(message, msg)
         return
-    elif parameters in roles:
-        await reply(message, "```\nRole name: {}\nTeam: {}\nDescription: {}\n```".format(parameters, roles[parameters][0], roles[parameters][2]))
+    elif _autocomplete(parameters, roles)[1] == 1:
+        role = _autocomplete(parameters, roles)[0]
+        await reply(message, "```\nRole name: {}\nTeam: {}\nDescription: {}\n```".format(role, roles[role][0], roles[role][2]))
         return
     params = parameters.split(' ')
     gamemode = 'default'
     num_players = -1
-    if params[0] in gamemodes:
-        gamemode = params[0]
+    choice, num = _autocomplete(params[0], gamemodes)
+    if num == 1:
+        gamemode = choice
+
     if params[0].isdigit():
         num_players = params[0]
     elif len(params) == 2 and params[1].isdigit():
@@ -493,7 +502,7 @@ async def cmd_role(message, parameters):
             if params[1] == 'table':
                 # generate role table
                 WIDTH = 20
-                role_dict = gamemodes[gamemode]
+                role_dict = gamemodes[gamemode]['roles']
                 role_guide = "Role table for gamemode **{}**:\n".format(gamemode)
                 role_guide += "```\n" + " " * (WIDTH + 2)
                 role_guide += ','.join("{}{}".format(' ' * (2 - len(str(x))), x) for x in range(MIN_PLAYERS, MAX_PLAYERS + 1)) + '\n'
@@ -501,7 +510,7 @@ async def cmd_role(message, parameters):
                 role_guide += "\n```"
             elif params[1] == 'guide':
                 # generate role guide
-                role_dict = gamemodes[gamemode]
+                role_dict = gamemodes[gamemode]['roles']
                 prev_dict = dict((x, 0) for x in roles if x != 'villager')
                 role_guide = 'Role guide for gamemode **{}**:\n'.format(gamemode)
                 for i in range(MAX_PLAYERS - MIN_PLAYERS + 1):
@@ -545,14 +554,18 @@ async def cmd_role(message, parameters):
         await reply(message, role_guide)
     else:
         num_players = int(num_players)
-        if num_players in range(MIN_PLAYERS, MAX_PLAYERS + 1):
-            msg = "Roles for **{}** players in gamemode **{}**:```\n".format(num_players, gamemode)
-            game_roles = get_roles(gamemode, num_players)
-            msg += '\n'.join(["{}: {}".format(x, game_roles[x]) for x in sort_roles(game_roles)])
-            msg += '```'
+        if num_players in range(gamemodes[gamemode]['min_players'], gamemodes[gamemode]['max_players'] + 1):
+            if gamemode in ('random',):
+                msg = "!role is disabled for the **{}** gamemode.".format(gamemode)
+            else:
+                msg = "Roles for **{}** players in gamemode **{}**:```\n".format(num_players, gamemode)
+                game_roles = get_roles(gamemode, num_players)
+                msg += '\n'.join("{}: {}".format(x, game_roles[x]) for x in sort_roles(game_roles))
+                msg += '```'
             await reply(message, msg)
         else:
-            await reply(message, "Please choose a number of players between " + str(MIN_PLAYERS) + " and " + str(MAX_PLAYERS) + ".")
+            await reply(message, "Please choose a number of players between " + str(gamemodes[gamemode]['min_players']) +\
+            " and " + str(gamemodes[gamemode]['max_players']) + ".")
 
 async def _send_role_info(player, sendrole=True):
     if session[0] and player in session[1]:
@@ -611,6 +624,10 @@ async def cmd_stats(message, parameters):
         reply_msg += "```basic\nLiving players:\n" + "\n".join(get_name(x) + ' (' + x + ')' for x in sort_players(session[1]) if session[1][x][0]) + '\n'
         reply_msg += "Dead players:\n" + "\n".join(get_name(x) + ' (' + x + ')' for x in sort_players(session[1]) if not session[1][x][0]) + '\n'
 
+        if session[6] in ('random',):
+            reply_msg += '\n!stats is disabled for the {} gamemode.```'.format(session[6])
+            await reply(message, reply_msg)
+            return
         orig_roles = dict(session[7])
         # make a copy
         role_dict = {}
@@ -699,7 +716,7 @@ async def cmd_stats(message, parameters):
 
 @cmd('revealroles', [1, 1], "```\n{0}revealroles takes no arguments\n\nDisplays what each user's roles are and sends it in pm.```")
 async def cmd_revealroles(message, parameters):
-    msg = "```diff\n"
+    msg = "**Gamemode**: {}```diff\n".format(session[6])
     for player in sort_players(session[1]):
         msg += "{} ".format('+' if session[1][player][0] else '-') + get_name(player) + ' (' + player + '): ' + get_role(player, 'actual')
         msg += "; action: " + session[1][player][2] + "; other: " + ' '.join(session[1][player][4]) + "\n"
@@ -790,18 +807,14 @@ async def cmd_vote(message, parameters):
                 await reply(message, "An admin has already set a gamemode.")
                 return
             if message.author.id in session[1]:
-                choice = []
-                params = parameters.split(' ')
-                for gamemode in gamemodes:
-                    if gamemode.startswith(params[0]):
-                        choice.append(gamemode)
-                if len(choice) == 0:
+                choice, num = _autocomplete(parameters, gamemodes)
+                if num == 0:
                     await reply(message, "Could not find gamemode {}".format(parameters))
-                elif len(choice) == 1:
-                    session[1][message.author.id][2] = choice[0]
-                    await reply(message, "You have voted for the **{}** gamemode.".format(choice[0]))
+                elif num == 1:
+                    session[1][message.author.id][2] = choice
+                    await reply(message, "You have voted for the **{}** gamemode.".format(choice))
                 else:
-                    await reply(message, "Multiple options: {}".format(', '.join(choice)))
+                    await reply(message, "Multiple options: {}".format(', '.join(sorted(choice))))
             else:
                 await reply(message, "You cannot vote for a gamemode if you are not playing!")
         
@@ -1252,8 +1265,8 @@ async def cmd_totem(message, parameters):
         for totem in totems:
             if totem.startswith(parameters):
                 reply_totems.append(totem)
-        if len(reply_totems) == 1:
-            totem = reply_totems[0]
+        if _autocomplete(parameters, totems)[1] == 1:
+            totem = _autocomplete(parameters, totems)[0]
             reply_msg = "```\n"
             reply_msg += totem[0].upper() + totem[1:].replace('_', ' ') + "\n\n"
             reply_msg += totems[totem] + "```"
@@ -1280,15 +1293,12 @@ async def cmd_fgame(message, parameters):
                 session[6] = parameters
                 await reply(message, "Successfully set gamemode roles to `{}`".format(role_string))
         else:
-            choices = []
-            for gamemode in gamemodes:
-                if gamemode.startswith(parameters):
-                    choices.append(gamemode)
-            if len(choices) == 1:
-                session[6] = choices[0]
-                await reply(message, "Successfuly set gamemode to **{}**.".format(choices[0]))
-            elif len(choices) > 1:
-                await reply(message, "Multiple choices: {}".format(', '.join(choices)))
+            choices, num = _autocomplete(parameters, gamemodes)
+            if num == 1:
+                session[6] = choices
+                await reply(message, "Successfuly set gamemode to **{}**.".format(choices))
+            elif num > 1:
+                await reply(message, "Multiple choices: {}".format(', '.join(sorted(choices))))
             else:
                 await reply(message, "Could not find gamemode {}".format(parameters))
     await log(2, "{0} ({1}) FGAME {2}".format(message.author.name, message.author.id, parameters))
@@ -1465,18 +1475,26 @@ async def cmd_fstasis(message, parameters):
         reply_msg = "Invalid mention/id: {0}."
 
     await reply(message, reply_msg.format(name, player, amount, '' if int(amount) == 1 else 's'))
-    await log(2, "{0} ({1}) FSTASIS {2}".format(message.author.name, message.author.id, parameters))
+    await log(2, "{0} ({1}) FSTASIS {2}".format(message.author.name, message.author.id, parameters))    
 
-@cmd('gamemodes', [0, 0], "```\n{0}gamemodes takes no arguments\n\nDisplays a list of gamemodes.```", 'games')
-async def cmd_gamemodes(message, parameters):
-    await reply(message, "Available gamemodes: {}".format(', '.join(sorted(gamemodes))))
+@cmd('gamemode', [0, 0], "```\n{0}gamemode [<gamemode>]\n\nDisplays information on [<gamemode>] or displays a "
+                         "list of gamemodes.```", 'game', 'gamemodes')
+async def cmd_gamemode(message, parameters):
+    gamemode, num = _autocomplete(parameters, gamemodes)
+    if num == 1 and parameters != '':
+        await reply(message, "```\nGamemode: {}\nPlayers: {}\nDescription: {}\n\nUse the command "
+                             "`!roles {} table` to view roles for this gamemode.```".format(gamemode,
+        str(gamemodes[gamemode]['min_players']) + '-' + str(gamemodes[gamemode]['max_players']),
+        gamemodes[gamemode]['description'], gamemode))
+    else:
+        await reply(message, "Available gamemodes: {}".format(', '.join(sorted(gamemodes))))
 
 @cmd('verifygamemode', [1, 1], "```\n{0}verifygamemode [<gamemode>]\n\nChecks to make sure [<gamemode>] is valid.```", 'verifygamemodes')
 async def cmd_verifygamemode(message, parameters):
     if parameters == '':
         await reply(message, "```\n{}\n```".format(verify_gamemodes()))
-    elif parameters in gamemodes:
-        await reply(message, "```\n{}\n```".format(verify_gamemode(parameters)))
+    elif _autocomplete(parameters, gamemodes)[1] == 1:
+        await reply(message, "```\n{}\n```".format(verify_gamemode(_autocomplete(parameters, gamemodes)[0])))
     else:
         await reply(message, "Invalid gamemode: {}".format(parameters))
 
@@ -1728,8 +1746,10 @@ async def log(loglevel, text):
     if loglevel >= MIN_LOG_LEVEL:
         await client.send_message(client.get_channel(DEBUG_CHANNEL), logmsg)
 
-def balance_roles(massive_role_list, default_role='villager'):
-    extra_players = len(session[1]) - len(massive_role_list)
+def balance_roles(massive_role_list, default_role='villager', num_players=-1):
+    if num_players == -1:
+        num_players = len(session[1])
+    extra_players = num_players - len(massive_role_list)
     if extra_players > 0:
         massive_role_list += [default_role] * extra_players
         return (massive_role_list, "Not enough roles; added {} {} to role list".format(extra_players, default_role))
@@ -1775,9 +1795,9 @@ async def assign_roles(gamemode):
     massive_role_list = []
     gamemode_roles = get_roles(gamemode, len(session[1]))
 
-    if 'wolf' not in gamemode_roles and not gamemode.startswith('roles'):
-        # Invalid number of players for gamemode
-        gamemode_roles = get_roles('default', len(session[1])) # Fallback
+    if not gamemode_roles:
+        # Second fallback just in case
+        gamemode_roles = get_roles('default', len(session[1]))
         session[6] = 'default'
         
     # Generate list of roles
@@ -1807,7 +1827,7 @@ async def assign_roles(gamemode):
         ['wolf', 'werecrow', 'seer', 'fool'] and 'cursed' not in session[1][x][3]])
         session[1][cursed][3].append('cursed')
     for i in range(gamemode_roles['gunner'] if 'gunner' in gamemode_roles else 0):
-        if gamemode in ['chaos']:
+        if gamemode in ['chaos', 'random']:
             pewpew = random.choice([x for x in session[1] if 'gunner' not in session[1][x][3]])
         else:
             pewpew = random.choice([x for x in session[1] if get_role(x, 'role') not in \
@@ -2058,12 +2078,37 @@ def get_roles(gamemode, players):
                 if amount.isdigit():
                     gamemode_roles[role.strip()] = int(amount)
             return gamemode_roles
-    elif gamemode in gamemodes and players in range(MIN_PLAYERS, MAX_PLAYERS + 1):
-        gamemode_roles = {}
-        for role in roles:
-            if role in gamemodes[gamemode] and gamemodes[gamemode][role][players - MIN_PLAYERS] > 0:
-                gamemode_roles[role] = gamemodes[gamemode][role][players - MIN_PLAYERS]
-        return gamemode_roles
+    elif gamemode in gamemodes:
+        if players in range(gamemodes[gamemode]['min_players'], gamemodes[gamemode]['max_players'] + 1):
+            if gamemode == 'random':
+                exit = False
+                while not exit:
+                    exit = True
+                    available_roles = [x for x in roles if x not in TEMPLATES_ORDERED\
+                                        and x not in ('villager', 'cultist')]
+                    gamemode_roles = dict((x, 0) for x in available_roles)
+                    wolves = [x for x in WOLF_ROLES_ORDERED if x not in ('cultist', 'traitor')]
+                    gamemode_roles[random.choice(wolves)] += 1 # ensure at least 1 wolf that can kill
+                    for i in range(players - 1):
+                        gamemode_roles[random.choice(available_roles)] += 1
+                    gamemode_roles['gunner'] = random.randrange(int(players ** 1.2 / 4))
+                    gamemode_roles['cursed villager'] = random.randrange(int(players ** 1.2 / 3))
+                    teams = {'village' : 0, 'wolf' : 0, 'neutral' : 0}
+                    for role in gamemode_roles:
+                        if role not in TEMPLATES_ORDERED:
+                            teams[roles[role][0]] += gamemode_roles[role]
+                    if teams['wolf'] >= teams['village'] + teams['neutral']:
+                        exit = False
+                for role in dict(gamemode_roles):
+                    if gamemode_roles[role] == 0:
+                        del gamemode_roles[role]
+                return gamemode_roles
+            else:
+                gamemode_roles = {}
+                for role in roles:
+                    if role in gamemodes[gamemode]['roles'] and gamemodes[gamemode]['roles'][role][players - MIN_PLAYERS] > 0:
+                        gamemode_roles[role] = gamemodes[gamemode]['roles'][role][players - MIN_PLAYERS]
+                return gamemode_roles
     return None
 
 def get_votes(totem_dict):
@@ -2086,11 +2131,25 @@ def get_votes(totem_dict):
                 vote_dict[p] += 1
     return vote_dict
 
+def _autocomplete(string, lst):
+    if string in lst:
+        return (string, 1)
+    else:
+        choices = []
+        for item in lst:
+            if item.startswith(string):
+                choices.append(item)
+        if len(choices) == 1:
+            return (choices[0], 1)
+        else:
+            return (choices, len(choices))
+
 def verify_gamemode(gamemode, verbose=True):
     msg = ''
     good = True
     for i in range(MAX_PLAYERS - MIN_PLAYERS + 1):
-        total = sum([gamemodes[gamemode][role][i] for role in gamemodes[gamemode] if role in WOLF_ROLES_ORDERED + VILLAGE_ROLES_ORDERED + NEUTRAL_ROLES_ORDERED])
+        total = sum(gamemodes[gamemode]['roles'][role][i] for role in gamemodes[gamemode]['roles']\
+        if role not in TEMPLATES_ORDERED)
         msg += str(total)
         if total != i + MIN_PLAYERS and total != 0:
             good = False
@@ -2105,7 +2164,7 @@ def verify_gamemode(gamemode, verbose=True):
 def verify_gamemodes(verbose=True):
     msg = ''
     good = True
-    for gamemode in gamemodes:
+    for gamemode in sorted(gamemodes):
         msg += gamemode + '\n'
         result = verify_gamemode(gamemode)
         resultlist = result.split('\n')
@@ -2240,6 +2299,8 @@ async def run_game():
     perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
     perms.send_messages = False
     await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
+    if not get_roles(session[6], len(session[1])):
+        session[6] = 'default' # Fallback if invalid number of players for gamemode or invalid gamemode somehow
     await client.send_message(client.get_channel(GAME_CHANNEL), PLAYERS_ROLE.mention + ", Welcome to Werewolf, the popular detective/social party game (a theme of Mafia). "
                               "Using the **{}** game mode with **{}** players.\nAll players check for PMs from me for instructions. "
                               "If you did not receive a pm, please let {} know.".format('roles' if session[6].startswith('roles') else session[6],
@@ -2811,184 +2872,258 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
                                             "them, or the gun exploding. If you are a wolf and shoot at a wolf, you will intentionally miss."]}
 
 gamemodes = {
-            'default' : {
-                  # 4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
-                 'wolf' :
-                   [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1],
-                 'werecrow' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 2, 2],
-                 'werekitten' :
-                   [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1],
-                 'traitor' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
-                 'cultist' :
-                   [0, 0, 0, 1, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'seer' :
-                   [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 2, 2, 2],
-                 'shaman' :
-                   [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2],
-                 'harlot' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 2],
-                 'hunter' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 1, 1],
-                 'villager' :
-                   [2, 3, 4, 3, 3, 3,  3, 4, 3, 4, 4, 2, 2],
-                 'crazed shaman' :
-                   [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 2, 2, 2],
-                 'cursed villager' :
-                   [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2],
-                 'gunner' :
-                   [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1]},
-             'test' : {
-                  # 4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
-                 'wolf' :
-                   [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1],
-                 'werecrow' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 2, 2],
-                 'werekitten' :
-                   [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1],
-                 'traitor' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
-                 'cultist' :
-                   [0, 0, 0, 1, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'seer' :
-                   [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 2, 2, 2],
-                 'shaman' :
-                   [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2],
-                 'harlot' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 2],
-                 'villager' :
-                   [2, 3, 4, 3, 3, 3,  3, 4, 3, 4, 4, 3, 3],
-                 'crazed shaman' :
-                   [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 2, 2, 2],
-                 'cursed villager' :
-                   [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2],
-                 'gunner' :
-                   [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1]},
-             'foolish' : {
-                  # 4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
-                 'wolf' :
-                   [0, 0, 0, 0, 1, 1,  2, 2, 3, 3, 3, 3, 3],
-                 'traitor' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
-                 'cultist' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'seer' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
-                 'shaman' :
-                   [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1],
-                 'harlot' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
-                 'hunter' :
-                   [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 1, 1, 1],
-                 'villager' :
-                   [0, 0, 0, 0, 3, 3,  3, 2, 2, 3, 4, 3, 4],
-                 'crazed shaman' :
-                   [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1],
-                 'fool' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
-                 'cursed villager' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
-                 'gunner' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1]},
-             'chaos' : {
-                  # 4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
-                 'wolf' :
-                   [1, 1, 1, 1, 1, 1,  2, 2, 2, 3, 3, 3, 3],
-                 'traitor' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
-                 'cultist' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'seer' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'shaman' :
-                   [3, 4, 4, 4, 3, 4,  3, 2, 3, 1, 2, 1, 1],
-                 'harlot' :
-                   [0, 0, 0, 1, 1, 1,  2, 2, 2, 3, 3, 3, 4],
-                 'villager' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'crazed shaman' :
-                   [0, 0, 0, 0, 1, 1,  1, 2, 2, 3, 3, 4, 4],
-                 'fool' :
-                   [0, 0, 1, 1, 1, 1,  1, 2, 2, 2, 2, 2, 2],
-                 'cursed villager' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'gunner' :
-                   [1, 1, 1, 1, 1, 2,  2, 2, 2, 3, 3, 3, 3]},
-             'orgy' : {
-                  # 4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
-                 'wolf' :
-                   [1, 1, 1, 1, 1, 1,  2, 2, 2, 3, 3, 3, 3],
-                 'traitor' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
-                 'cultist' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'seer' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'shaman' :
-                   [0, 0, 0, 1, 1, 1,  2, 2, 2, 3, 3, 3, 4],
-                 'harlot' :
-                   [3, 4, 4, 4, 3, 4,  3, 2, 3, 1, 2, 1, 1],
-                 'villager' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'crazed shaman' :
-                   [0, 0, 0, 0, 1, 1,  1, 2, 2, 3, 3, 4, 4],
-                 'fool' :
-                   [0, 0, 1, 1, 1, 1,  1, 2, 2, 2, 2, 2, 2],
-                 'cursed villager' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0]},
-             'crazy' : {
-                  # 4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
-                 'wolf' :
-                   [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 1, 1, 2],
-                 'traitor' :
-                   [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 2, 2, 2],
-                 'cultist' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'seer' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'shaman' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'harlot' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'villager' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'crazed shaman' :
-                   [3, 4, 5, 6, 5, 6,  7, 7, 7, 8, 8, 9, 9],
-                 'fool' :
-                   [0, 0, 0, 0, 1, 1,  1, 2, 2, 2, 3, 3, 3],
-                 'cursed villager' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0]},
-            'template' : { # This is a template you can use for making your own gamemodes.
-                  # 4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
-                 'wolf' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'werecrow' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'werekitten' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'traitor' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'cultist' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'seer' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'shaman' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'harlot' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'hunter' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'villager' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'crazed shaman' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'cursed villager' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-                 'gunner' :
-                   [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0]},
-             }
-gamemodes['belunga'] = dict(gamemodes['default'])
+    'default' : {
+        'description' : "The default gamemode.",
+        'min_players' : 4,
+        'max_players' : 16,
+        'roles' : {
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            'wolf' :
+            [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            'werecrow' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 2, 2],
+            'werekitten' :
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1],
+            'traitor' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            'cultist' :
+            [0, 0, 0, 1, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'seer' :
+            [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 2, 2, 2],
+            'shaman' :
+            [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2],
+            'harlot' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 2],
+            'hunter' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 1, 1],
+            'villager' :
+            [2, 3, 4, 3, 3, 3,  3, 4, 3, 4, 4, 2, 2],
+            'crazed shaman' :
+            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 2, 2, 2],
+            'cursed villager' :
+            [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2],
+            'gunner' :
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1]}
+        },
+    'test' : {
+        'description' : "Gamemode for testing stuff.",
+        'min_players' : 4,
+        'max_players' : 16,
+        'roles' : {
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            'wolf' :
+            [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            'werecrow' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 2, 2],
+            'werekitten' :
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1],
+            'traitor' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            'cultist' :
+            [0, 0, 0, 1, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'seer' :
+            [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 2, 2, 2],
+            'shaman' :
+            [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2],
+            'harlot' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 2],
+            'villager' :
+            [2, 3, 4, 3, 3, 3,  3, 4, 3, 4, 4, 3, 3],
+            'crazed shaman' :
+            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 2, 2, 2],
+            'cursed villager' :
+            [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2],
+            'gunner' :
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1]}
+    },
+    'foolish' : {
+        'description' : "Watch out, because the fool is always there to steal the win.",
+        'min_players' : 8,
+        'max_players' : 16,
+        'roles' : {
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            'wolf' :
+            [0, 0, 0, 0, 1, 1,  2, 2, 3, 3, 3, 3, 3],
+            'traitor' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
+            'cultist' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'seer' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
+            'shaman' :
+            [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1],
+            'harlot' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            'hunter' :
+            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 1, 1, 1],
+            'villager' :
+            [0, 0, 0, 0, 3, 3,  3, 2, 2, 3, 4, 3, 4],
+            'crazed shaman' :
+            [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1],
+            'fool' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            'cursed villager' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            'gunner' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1]}
+    },
+    'chaos' : {
+        'description' : "Chaotic and unpredictable. Any role, including wolves, can be a gunner.",
+        'min_players' : 4,
+        'max_players' : 16,
+        'roles' : {
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            'wolf' :
+            [1, 1, 1, 1, 1, 1,  2, 2, 2, 3, 3, 3, 3],
+            'traitor' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
+            'cultist' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'seer' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'shaman' :
+            [3, 4, 4, 4, 3, 4,  3, 2, 3, 1, 2, 1, 1],
+            'harlot' :
+            [0, 0, 0, 1, 1, 1,  2, 2, 2, 3, 3, 3, 4],
+            'villager' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'crazed shaman' :
+            [0, 0, 0, 0, 1, 1,  1, 2, 2, 3, 3, 4, 4],
+            'fool' :
+            [0, 0, 1, 1, 1, 1,  1, 2, 2, 2, 2, 2, 2],
+            'cursed villager' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'gunner' :
+            [1, 1, 1, 1, 1, 2,  2, 2, 2, 3, 3, 3, 3]}
+    },
+    'orgy' : {
+        'description' : "Be careful who you visit! ( ͡° ͜ʖ ͡°)",
+        'min_players' : 4,
+        'max_players' : 16,
+        'roles' : {
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            'wolf' :
+            [1, 1, 1, 1, 1, 1,  2, 2, 2, 3, 3, 3, 3],
+            'traitor' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2],
+            'cultist' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'seer' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'shaman' :
+            [0, 0, 0, 1, 1, 1,  2, 2, 2, 3, 3, 3, 4],
+            'harlot' :
+            [3, 4, 4, 4, 3, 4,  3, 2, 3, 1, 2, 1, 1],
+            'villager' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'crazed shaman' :
+            [0, 0, 0, 0, 1, 1,  1, 2, 2, 3, 3, 4, 4],
+            'fool' :
+            [0, 0, 1, 1, 1, 1,  1, 2, 2, 2, 2, 2, 2],
+            'cursed villager' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0]}
+    },
+    'crazy' : {
+        'description' : "Random totems galore.",
+        'min_players' : 4,
+        'max_players' : 16,
+        'roles' : {
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            'wolf' :
+            [1, 1, 1, 1, 1, 1,  1, 1, 2, 2, 1, 1, 2],
+            'traitor' :
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 2, 2, 2],
+            'cultist' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'seer' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'shaman' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'harlot' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'villager' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'crazed shaman' :
+            [3, 4, 5, 6, 5, 6,  7, 7, 7, 8, 8, 9, 9],
+            'fool' :
+            [0, 0, 0, 0, 1, 1,  1, 2, 2, 2, 3, 3, 3],
+            'cursed villager' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0]}
+    },
+    'belunga' : {
+        'description' : "Originally an april fool's joke, this gamemode is interesting, to say the least.",
+        'min_players' : 4,
+        'max_players' : 16,
+        'roles' : {}
+        },
+    'random' : {
+        'description' : "Other than ensuring the game doesn't end immediately, no one knows what roles will appear.",
+        'min_players' : 8,
+        'max_players' : 16,
+        'roles' : {
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            'wolf' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'werecrow' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'werekitten' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'traitor' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'cultist' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'seer' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'shaman' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'harlot' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'hunter' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'villager' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'crazed shaman' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'cursed villager' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'gunner' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0]}
+    },
+    'template' : {
+        'description' : "This is a template you can use for making your own gamemodes.",
+        'min_players' : 0,
+        'max_players' : 0,
+        'roles' : {
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            'wolf' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'werecrow' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'werekitten' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'traitor' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'cultist' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'seer' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'shaman' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'harlot' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'hunter' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'villager' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'crazed shaman' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'cursed villager' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            'gunner' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0]}
+    }
+}
+gamemodes['belunga']['roles'] = dict(gamemodes['default']['roles'])
 
 VILLAGE_ROLES_ORDERED = ['seer', 'shaman', 'harlot', 'hunter', 'villager']
 WOLF_ROLES_ORDERED = ['wolf', 'werecrow', 'werekitten', 'traitor', 'cultist']
