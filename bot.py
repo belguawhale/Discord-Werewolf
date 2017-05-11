@@ -748,6 +748,12 @@ async def cmd_see(message, parameters):
                 else:
                     session[1][message.author.id][2] = player
                     seen_role = get_role(player, 'seen')
+                    if (session[1][player][4].count('deceit_totem2') +\
+                    session[1][message.author.id][4].count('deceit_totem2')) % 2 == 1:
+                        if seen_role == 'wolf':
+                            seen_role = 'villager'
+                        else:
+                            seen_role = 'wolf'
                     await reply(message, "You have a vision... in your vision you see that **" + get_name(player) + "** is a **" + seen_role + "**!")
                     await log(1, "{0} ({1}) SEE {2} ({3}) AS {4}".format(get_name(message.author.id), message.author.id, get_name(player), player, seen_role))
             else:
@@ -1559,7 +1565,7 @@ async def cmd_shoot(message, parameters):
                     ded = target
                 elif outcome == 'suicide':
                     msg += "Oh no! **{}**'s gun was poorly maintained and has exploded! ".format(get_name(message.author.id))
-                    msg += "The village mourns a **gunnner-{}**.".format(get_role(message.author.id, 'death'))
+                    msg += "The village mourns a **gunner-{}**.".format(get_role(message.author.id, 'death'))
                     ded = message.author.id
                 elif outcome == 'killvictim':
                     msg += "**{}** is not a wolf but was fatally injured. The village has sacrificed a **{}**.".format(
@@ -1823,17 +1829,21 @@ async def assign_roles(gamemode):
             session[1][player][4].append('hunterbullet')
 
     for i in range(gamemode_roles['cursed villager'] if 'cursed villager' in gamemode_roles else 0):
-        cursed = random.choice([x for x in session[1] if get_role(x, 'role') not in\
-        ['wolf', 'werecrow', 'seer', 'fool'] and 'cursed' not in session[1][x][3]])
-        session[1][cursed][3].append('cursed')
+        cursed_choices = [x for x in session[1] if get_role(x, 'role') not in\
+        ['wolf', 'werecrow', 'seer', 'fool'] and 'cursed' not in session[1][x][3]]
+        if cursed_choices:
+            cursed = random.choice(cursed_choices)
+            session[1][cursed][3].append('cursed')
     for i in range(gamemode_roles['gunner'] if 'gunner' in gamemode_roles else 0):
         if gamemode in ['chaos', 'random']:
-            pewpew = random.choice([x for x in session[1] if 'gunner' not in session[1][x][3]])
+            gunner_choices = [x for x in session[1] if 'gunner' not in session[1][x][3]]
         else:
-            pewpew = random.choice([x for x in session[1] if get_role(x, 'role') not in \
-            WOLF_ROLES_ORDERED + NEUTRAL_ROLES_ORDERED and 'gunner' not in session[1][x][3]])
-        session[1][pewpew][3].append('gunner')
-        session[1][pewpew][4] += ['bullet'] * int(GUNNER_MULTIPLIER * len(session[1]) + 1)
+            gunner_choices = [x for x in session[1] if get_role(x, 'role') not in \
+            WOLF_ROLES_ORDERED + NEUTRAL_ROLES_ORDERED and 'gunner' not in session[1][x][3]]
+        if gunner_choices:
+            pewpew = random.choice(gunner_choices)
+            session[1][pewpew][3].append('gunner')
+            session[1][pewpew][4] += ['bullet'] * int(GUNNER_MULTIPLIER * len(session[1]) + 1)
     if gamemode == 'belunga':
         for player in session[1]:
             session[1][player][4].append('belunga_totem')
@@ -2494,7 +2504,8 @@ async def game_loop(ses=None):
 
             if player in wolf_deaths and killed_dict[player] > 0 and player not in death_totemed:
                 # player was targeted and killed by wolves
-                if 'retribution_totem' in session[1][player][4]:
+                ret_lyc_count = session[1][player][4].count('retribution_totem') - session[1][player][4].count('lycanthropy_totem2')
+                if ret_lyc_count > 0:
                     revenge_targets = [x for x in session[1] if session[1][x][0] and get_role(x, 'role') in [
                         'wolf', 'werecrow', 'werekitten']]
                     if get_role(player, 'role') == 'harlot' and get_role(session[1][player][2], 'role') in [
@@ -2508,7 +2519,7 @@ async def game_loop(ses=None):
                         killed_msg += "While being attacked last night, **{}**'s totem emitted a bright flash of light. The dead body of **{}**".format(
                                         get_name(wolf_killed), get_name(revengekill))
                         killed_msg += ", a **{}**, was found at the scene.\n".format(get_role(revengekill, 'role'))
-                elif 'lycanthropy_totem' in session[1][player][4]:
+                elif ret_lyc_count < 0:
                     killed_dict[player] = 0
                     wolf_turn.append(player)
                     await wolfchat("{} is now a **wolf**!".format(get_name(player)))
@@ -2519,9 +2530,19 @@ async def game_loop(ses=None):
                                                               "Your totem emits a bright flash of light, and you find yourself turning into a werewolf!")
                     except discord.Forbidden:
                         pass
-
-            session[1][player][4][:] = [x for x in session[1][player][4] if x not in ['death_totem',
-                'protection_totem', 'cursed_totem', 'lycanthropy_totem', 'retribution_totem']]
+            other = session[1][player][4][:]
+            for o in other[:]:
+                # hacky way to get specific totems to last 2 nights
+                if o in ['death_totem', 'protection_totem', 'cursed_totem', 'retribution_totem', 'lycanthropy_totem2',
+                         'deceit_totem2']:
+                    other.remove(o)
+                elif o == 'lycanthropy_totem':
+                    other.remove(o)
+                    other.append('lycanthropy_totem2')
+                elif o == 'deceit_totem':
+                    other.remove(o)
+                    other.append('deceit_totem2')
+            session[1][player][4] = other
         for player in sort_players(wolf_deaths):
             if 'gunner' in get_role(player, 'templates') and \
             session[1][player][4].count('bullet') > 0 and killed_dict[player] > 0:
@@ -2533,13 +2554,15 @@ async def game_loop(ses=None):
                         revenge_targets[:] = [session[1][player][2]]
                     else:
                         revenge_targets[:] = [x for x in revenge_targets if session[1][x][2] == wolf_killed]
+                    revenge_targets[:] = [x for x in revenge_targets if x not in gunner_revenge]
                     if revenge_targets:
-                        gunner_revenge = random.choice(revenge_targets)
+                        target = random.choice(revenge_targets)
+                        gunner_revenge.append(target)
                         session[1][player][4].remove('bullet')
-                        killed_dict[gunner_revenge] += 1
-                        if gunner_revenge and killed_dict[gunner_revenge] > 0:
+                        killed_dict[target] += 1
+                        if killed_dict[target] > 0:
                             killed_msg += "Fortunately **{}** had bullets and **{}**, a **{}**, was shot dead.\n".format(
-                                get_name(player), get_name(gunner_revenge), get_role(gunner_revenge, 'death'))
+                                get_name(player), get_name(target), get_role(target, 'death'))
                 if session[1][player][4].count('bullet') > 0:
                     give_gun_targets = [x for x in session[1] if session[1][x][0] and get_role(x, 'role') in ['wolf', 'werecrow', 'werekitten', 'traitor']]
                     if len(give_gun_targets) > 0:
@@ -3138,8 +3161,10 @@ totems = {'death_totem' : 'The player who is given this totem will die tonight.'
           'cursed_totem' : 'The player who is given this totem will gain the cursed template if they do not have it.',
           'lycanthropy_totem' : 'If the player who is given this totem is targeted by wolves the following night, they turn into a wolf instead of dying.',
           'retribution_totem' : 'If the player who is given this totem is targeted by wolves during the night, they kill a random wolf in turn.',
-          'blinding_totem' : 'The player who is given this totem will be injured and unable to vote the following day.'}
-          #'deceit_totem' : 'If the player who is given this totem is seen by the seer/oracle the following night, '}
+          'blinding_totem' : 'The player who is given this totem will be injured and unable to vote the following day.',
+          'deceit_totem' : 'If the player who is given this totem is seen by the seer/oracle the following night, the '
+                           'vision will return the opposite of what they are. If a seer/oracle is given this totem, '
+                           'all of their visions will return the opposite.'}
 SHAMAN_TOTEMS = ['death_totem', 'protection_totem', 'revealing_totem', 'influence_totem', 'impatience_totem', 'pacifism_totem']
 ROLES_SEEN_VILLAGER = ['villager', 'traitor', 'cultist', 'fool', 'werekitten']
 ROLES_SEEN_WOLF = ['wolf', 'werecrow', 'cursed']
