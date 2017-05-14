@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+5/14/2017 - Added detective role; Added detective to gamemodes and rebalanced foolish
+
 5/10/2017 - Fixed a bug where random role assignment could error if there were no cursed villager choices; Added deceit totem; Changed lycanthropy and deceit so they take effect on the night after they were given; Fixed a spelling error; Fixed an issue with gunner revenge where multiple gunner revenge deaths (possible with harlot) would only count the last one
 
 5/1/2017 - Added random gamemode and gamemode descriptions; Made a common function to do autocompletion; Added autocompletion for role names and gamemodes; Added !game command to view information on gamemodes; Fixed a few minor bugs with gamemode minimum and maximum players
