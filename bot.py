@@ -505,15 +505,16 @@ async def cmd_role(message, parameters):
                 role_dict = gamemodes[gamemode]['roles']
                 role_guide = "Role table for gamemode **{}**:\n".format(gamemode)
                 role_guide += "```\n" + " " * (WIDTH + 2)
-                role_guide += ','.join("{}{}".format(' ' * (2 - len(str(x))), x) for x in range(MIN_PLAYERS, MAX_PLAYERS + 1)) + '\n'
-                role_guide += '\n'.join(role + ' ' * (WIDTH - len(role)) + ": " + repr(role_dict[role]) for role in sort_roles(role_dict))
+                role_guide += ','.join("{}{}".format(' ' * (2 - len(str(x))), x) for x in range(gamemodes[gamemode]['min_players'], gamemodes[gamemode]['max_players'] + 1)) + '\n'
+                role_guide += '\n'.join(role + ' ' * (WIDTH - len(role)) + ": " + repr(\
+                role_dict[role][gamemodes[gamemode]['min_players'] - MIN_PLAYERS:gamemodes[gamemode]['max_players']]) for role in sort_roles(role_dict))
                 role_guide += "\n```"
             elif params[1] == 'guide':
                 # generate role guide
                 role_dict = gamemodes[gamemode]['roles']
                 prev_dict = dict((x, 0) for x in roles if x != 'villager')
                 role_guide = 'Role guide for gamemode **{}**:\n'.format(gamemode)
-                for i in range(MAX_PLAYERS - MIN_PLAYERS + 1):
+                for i in range(gamemodes[gamemode]['max_players'] - MIN_PLAYERS + 1):
                     current_dict = {}
                     for role in sort_roles(roles):
                         if role == 'villager':
@@ -1913,18 +1914,22 @@ async def end_game(reason, winners=None):
             msg += "The winners are **{}**, and **{}**!".format('**, **'.join(map(get_name, winners[:-1])), get_name(winners[-1]))
     await client.send_message(client.get_channel(GAME_CHANNEL), msg)
     await log(1, "WINNERS: {}".format(winners))
-    perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
-    perms.send_messages = True
-    await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
-    for player in list(session[1]):
+
+    players = list(session[1])
+    for player in players:
         del session[1][player]
-        member = client.get_server(WEREWOLF_SERVER).get_member(player)
-        if member:
-            await client.remove_roles(member, PLAYERS_ROLE)
     session[3] = [0, 0]
     session[4] = [timedelta(0), timedelta(0)]
     session[6] = ''
     session[7] = {}
+
+    perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
+    perms.send_messages = True
+    await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
+    for player in players:
+        member = client.get_server(WEREWOLF_SERVER).get_member(player)
+        if member:
+            await client.remove_roles(member, PLAYERS_ROLE)
 
     for stasised in [x for x in stasis if stasis[x] > 0]:
         stasis[stasised] -= 1
@@ -2150,8 +2155,8 @@ def get_roles(gamemode, players):
             else:
                 gamemode_roles = {}
                 for role in roles:
-                    if role in gamemodes[gamemode]['roles'] and gamemodes[gamemode]['roles'][role][players - MIN_PLAYERS] > 0:
-                        gamemode_roles[role] = gamemodes[gamemode]['roles'][role][players - MIN_PLAYERS]
+                    if role in gamemodes[gamemode]['roles'] and gamemodes[gamemode]['roles'][role][players - gamemodes[gamemode]['min_players']] > 0:
+                        gamemode_roles[role] = gamemodes[gamemode]['roles'][role][players - gamemodes[gamemode]['min_players']]
                 return gamemode_roles
     return None
 
@@ -2191,13 +2196,13 @@ def _autocomplete(string, lst):
 def verify_gamemode(gamemode, verbose=True):
     msg = ''
     good = True
-    for i in range(MAX_PLAYERS - MIN_PLAYERS + 1):
-        total = sum(gamemodes[gamemode]['roles'][role][i] for role in gamemodes[gamemode]['roles']\
+    for i in range(gamemodes[gamemode]['max_players'] - gamemodes[gamemode]['min_players'] + 1):
+        total = sum(gamemodes[gamemode]['roles'][role][i + gamemodes[gamemode]['min_players'] - MIN_PLAYERS] for role in gamemodes[gamemode]['roles']\
         if role not in TEMPLATES_ORDERED)
         msg += str(total)
-        if total != i + MIN_PLAYERS and total != 0:
+        if total != i + gamemodes[gamemode]['min_players'] and total != 0:
             good = False
-            msg += ' - should be ' + str(i + MIN_PLAYERS)
+            msg += ' - should be ' + str(i + gamemodes[gamemode]['min_players'])
         msg += '\n'
     msg = msg[:-1]
     if verbose:
@@ -2213,7 +2218,7 @@ def verify_gamemodes(verbose=True):
         result = verify_gamemode(gamemode)
         resultlist = result.split('\n')
         for i in range(len(resultlist)):
-            if resultlist[i] != str(i + MIN_PLAYERS) and resultlist[i] != '0':
+            if resultlist[i] != str(i + gamemodes[gamemode]['min_players']) and resultlist[i] != '0':
                 msg += result
                 good = False
                 break
@@ -2728,6 +2733,7 @@ async def game_loop(ses=None):
                         max_voted.append(voted)
                 lynched_player = random.choice(max_voted)
             if (datetime.now() - session[3][1]).total_seconds() > DAY_TIMEOUT:
+                session[3][0] = datetime.now() # hopefully a fix for time being weird
                 session[2] = False
             if (datetime.now() - session[3][1]).total_seconds() > DAY_WARNING and warn == False:
                 warn = True
@@ -2746,6 +2752,7 @@ async def game_loop(ses=None):
             if len(max_voted) == 1:
                 lynched_player = max_voted[0]
         if session[0]:
+            session[3][0] = datetime.now() # hopefully a fix for time being weird
             day_elapsed = datetime.now() - session[3][1]
             session[4][1] += day_elapsed
         lynched_msg = ""
@@ -2919,109 +2926,109 @@ gamemodes = {
     'default' : {
         'description' : "The default gamemode.",
         'min_players' : 4,
-        'max_players' : 16,
+        'max_players' : 20,
         'roles' : {
-            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16,17,18,19,20
             'wolf' :
-            [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2],
             'werecrow' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 2, 2],
+            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2],
             'werekitten' :
-            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'traitor' :
-            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'cultist' :
-            [0, 0, 0, 1, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0,  0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
             'seer' :
-            [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
             'shaman' :
-            [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2],
+            [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
             'harlot' :
-            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 2],
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'hunter' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 1, 1],
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
             'detective' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'villager' :
-            [2, 3, 4, 3, 3, 3,  3, 4, 3, 4, 4, 2, 2],
+            [2, 3, 4, 3, 3, 3,  3, 4, 3, 3, 4, 4, 4, 5, 5, 6, 5],
             'crazed shaman' :
-            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 2, 2, 2],
+            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2],
             'cursed villager' :
-            [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2],
+            [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3],
             'gunner' :
-            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1]}
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
         },
     'test' : {
         'description' : "Gamemode for testing stuff.",
-        'min_players' : 4,
-        'max_players' : 16,
+        'min_players' : 5,
+        'max_players' : 20,
         'roles' : {
-            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16,17,18,19,20
             'wolf' :
-            [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2],
             'werecrow' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 2, 2],
+            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2],
             'werekitten' :
-            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'traitor' :
-            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2],
             'cultist' :
-            [0, 0, 0, 1, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0,  0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0],
             'seer' :
-            [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [0, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'shaman' :
-            [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2],
+            [0, 0, 0, 1, 1, 1,  1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2],
             'harlot' :
-            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 2],
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
             'hunter' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 1, 1],
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
             'detective' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 2],
             'villager' :
-            [2, 3, 4, 3, 3, 3,  3, 4, 3, 4, 4, 2, 2],
+            [0, 3, 4, 3, 3, 3,  3, 4, 3, 3, 4, 2, 2, 3, 3, 4, 3],
             'crazed shaman' :
-            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 2, 2, 2],
+            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2],
             'cursed villager' :
-            [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2],
+            [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3],
             'gunner' :
-            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1]}
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
     },
     'foolish' : {
         'description' : "Watch out, because the fool is always there to steal the win.",
         'min_players' : 8,
-        'max_players' : 16,
+        'max_players' : 20,
         'roles' : {
-            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16,17,18,19,20
             'wolf' :
-            [0, 0, 0, 0, 1, 1,  2, 2, 2, 2, 2, 2, 2],
+            [0, 0, 0, 0, 1, 1,  2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3],
             'werecrow' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 1, 1],
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
             'werekitten' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'traitor' :
-            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'cultist' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'seer' :
-            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'shaman' :
-            [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
             'harlot' :
-            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2],
             'hunter' :
-            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'detective' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 1, 1],
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
             'villager' :
-            [0, 0, 0, 0, 3, 3,  3, 2, 2, 3, 4, 3, 4],
+            [0, 0, 0, 0, 3, 3,  3, 2, 2, 3, 4, 3, 4, 3, 4, 5, 5],
             'crazed shaman' :
-            [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'fool' :
-            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'cursed villager' :
-            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'gunner' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1]}
+            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
     },
     'chaos' : {
         'description' : "Chaotic and unpredictable. Any role, including wolves, can be a gunner.",
@@ -3109,7 +3116,7 @@ gamemodes = {
     'belunga' : {
         'description' : "Originally an april fool's joke, this gamemode is interesting, to say the least.",
         'min_players' : 4,
-        'max_players' : 16,
+        'max_players' : 20,
         'roles' : {}
         },
     'random' : {
