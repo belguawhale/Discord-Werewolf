@@ -1595,14 +1595,16 @@ async def cmd_shoot(message, parameters):
                 wolf = get_role(message.author.id, 'role') in WOLFCHAT_ROLES
                 session[1][message.author.id][4].remove('bullet')
                 outcome = ''
-                if get_role(target, 'role') in WOLFCHAT_ROLES:
-                    if wolf:
+                if wolf:
+                    if get_role(target, 'role') in WOLFCHAT_ROLES:
                         outcome = 'miss'
-                    else:
-                        outcome = 'killwolf'
-                elif get_role(target, 'role') in ['werekitten']:
-                    outcome = random.choice(['suicide'] * GUNNER_SUICIDE + ['miss'] * (GUNNER_MISS + GUNNER_HEADSHOT + GUNNER_INJURE))
                 else:
+                    if get_role(target, 'role') in ACTUAL_WOLVES:
+                        if get_role(target, 'role') in ['werekitten']:
+                            outcome = random.choice(['suicide'] * GUNNER_SUICIDE + ['miss'] * (GUNNER_MISS + GUNNER_HEADSHOT + GUNNER_INJURE))
+                        else:
+                            outcome = 'killwolf'
+                if outcome == '':
                     outcome = random.choice(['miss'] * GUNNER_MISS + ['suicide'] * GUNNER_SUICIDE \
                                              + ['killvictim'] * GUNNER_HEADSHOT + ['injure'] * GUNNER_INJURE)
                 if outcome in ['injure', 'killvictim', 'killwolf']:
