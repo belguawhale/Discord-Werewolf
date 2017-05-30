@@ -16,6 +16,7 @@ NOTIFY_FILE = 'notify.txt'
 BACKUP_INTERVAL = 300
 MESSAGE_LANGUAGE = 'en'
 LOG_FILE = 'debug.txt'
-MIN_LOG_LEVEL = 0
+MIN_LOG_LEVEL = 1
 # 0 to log everything, 1 to log only gameplay-related info, 2 to log only warnings
 STASIS_FILE = 'stasis.json'
+PLAYING_MESSAGE = '{0}info | {0}help | {0}join'.format(BOT_PREFIX)
