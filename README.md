@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+6/3/2017 - Fixed a bug that made lycan activate on the night it was given rather than the night after; Fixed a bug where an injured player could still use the abstain command
+
 5/30/2017 - Fixed a bug where shooting werekitten would be counted as shooting a wolf; Optimized the code for that
 
 5/29/2017 - MASSIVE UPDATE! Added sorcerer role; Added !rr alias for !revealroles; Added !role list so you can get a list of all roles during a game; Stasis is now removed on game start rather than on game end; Made stasis amount given on using !q/idling out configurable; Made secondary idle timer configurable (after the "you are idling" message is sent); Fixed a bug where foolish was unplayable for player counts under 12; Language files are loaded locally first now; !refresh command will edit the actual language file now; Added the ability to change the Playing... status in config.py; Added the !async command, which is like a better version of eval and exec; Reverted speeding up game end since it was causing problems due to discord ratelimits; Fixed member leaving the server causing idling out to error; All players are mentioned on game start/end; Fixed village win condition so that if all wolves are dead, village wins (rather than when all wolfteam roles are dead); Added sorcerer to gamemodes, replacing werecrow in a bunch of them

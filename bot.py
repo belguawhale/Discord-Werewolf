@@ -996,6 +996,9 @@ async def cmd_abstain(message, parameters):
     if session[4][1] == timedelta(0):
         await client.send_message(client.get_channel(GAME_CHANNEL), "The village may not abstain on the first day.")
         return
+    if 'injured' in session[1][message.author.id][4]:
+        await reply(message, "You are injured and unable to vote.")
+        return
     session[1][message.author.id][2] = 'abstain'
     await log(1, "{0} ({1}) ABSTAIN".format(get_name(message.author.id), message.author.id))
     await client.send_message(client.get_channel(GAME_CHANNEL), "**{}** votes to not lynch anyone today.".format(get_name(message.author.id)))
@@ -2633,7 +2636,7 @@ async def game_loop(ses=None):
 
             if player in wolf_deaths and killed_dict[player] > 0 and player not in death_totemed:
                 # player was targeted and killed by wolves
-                if session[1][player][4].count('lycanthropy_totem') > 0:
+                if session[1][player][4].count('lycanthropy_totem2') > 0:
                     killed_dict[player] = 0
                     wolf_turn.append(player)
                     await wolfchat("{} is now a **wolf**!".format(get_name(player)))
