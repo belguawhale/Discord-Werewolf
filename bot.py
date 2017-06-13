@@ -1252,7 +1252,7 @@ async def cmd_notify(message, parameters):
         return
     notify = message.author.id in notify_me
     if parameters == '':
-        online = ["<@{}>".format(x) for x in notify_me if is_online(x) and x not in session[1] and x not in stasis and not stasis[x] > 0]
+        online = ["<@{}>".format(x) for x in notify_me if is_online(x) and x not in session[1] and x not in stasis]
         await reply(message, "PING! {}".format(''.join(online)))
     elif parameters in ['true', '+', 'yes']:
         if notify:
