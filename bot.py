@@ -1949,7 +1949,7 @@ async def assign_roles(gamemode):
 
     for i in range(gamemode_roles['cursed villager'] if 'cursed villager' in gamemode_roles else 0):
         cursed_choices = [x for x in session[1] if get_role(x, 'role') not in\
-        ['wolf', 'werecrow', 'seer', 'fool', 'werekitten'] and 'cursed' not in session[1][x][3]]
+        ['wolf', 'werecrow', 'werekitten', 'seer', 'fool'] and 'cursed' not in session[1][x][3]]
         if cursed_choices:
             cursed = random.choice(cursed_choices)
             session[1][cursed][3].append('cursed')
