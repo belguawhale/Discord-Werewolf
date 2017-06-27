@@ -1294,7 +1294,8 @@ async def cmd_notify(message, parameters):
         return
     notify = message.author.id in notify_me
     if parameters == '':
-        online = ["<@{}>".format(x) for x in notify_me if is_online(x) and x not in session[1] and x not in stasis]
+        online = ["<@{}>".format(x) for x in notify_me if is_online(x) and x not in session[1] and\
+        (x in stasis and stasis[x] == 0 or x not in stasis)]
         await reply(message, "PING! {}".format(''.join(online)))
     elif parameters in ['true', '+', 'yes']:
         if notify:
@@ -1799,7 +1800,8 @@ async def cmd_id(message, parameters):
                         get_name(player), get_role(player, 'role')))
                     await log(1, "{0} ({1}) INVESTIGATE {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
                     if random.random() < DETECTIVE_REVEAL_CHANCE:
-                        await wolfchat("Someone accidentally drops a paper. The paper reveals that **{}** is the detective!".format(get_name(message.author.id)))
+                        await wolfchat("Someone accidentally drops a paper. The paper reveals that **{}** ({}) is the detective!".format(
+                            get_name(message.author.id), message.author.id))
                         await log(1, "{0} ({1}) DETECTIVE REVEAL".format(get_name(message.author.id), message.author.id))
                     while session[2] and win_condition() == None and session[0]:
                         await asyncio.sleep(0.1)
@@ -2412,9 +2414,11 @@ def is_online(user_id):
 async def player_death(player, reason='No reason specified'):
     if player not in session[1]:
         return
-    if session[0]:
+    ingame = 'IN GAME'
+    if session[0] and reason != 'game cancel':
         session[1][player][0] = False
     else:
+        ingame = 'NOT IN GAME'
         del session[1][player]
     member = client.get_server(WEREWOLF_SERVER).get_member(player)
     if member:
@@ -2424,7 +2428,7 @@ async def player_death(player, reason='No reason specified'):
             for p in session[1]:
                 if session[1][p][0] and get_role(p, 'role') in ACTUAL_WOLVES + ['traitor']:
                     session[1][p][4].append('angry')
-    await log(0, "{} ({}) PLAYER DEATH FOR {}".format(get_name(player), player, reason))
+    await log(0, "{} ({}) PLAYER DEATH {} FOR {}".format(get_name(player), player, ingame, reason))
 
 async def check_traitor():
     if not session[0] and win_condition() == None:

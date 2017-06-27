@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+6/26/2017 - Fixed a bug where virtually no one would be notified; Detective reveal now gives you the id of the detective due to issues before -_-; Fixed a bug where game cancel would screw up session
+
 6/26/2017 - **WOLF CUB UPDATE!** !frevive command now logs in debug logs; Fixed a bug where blinding totem would stay on dead players; Implemented angry status and added the related message in preparation for wolf cub; Stasised players will not be notified by !notify; Werekitten cannot be cursed; Changed format of living players in dm to be more readable (the old one was a huge blob of text at higher player counts, unreadable especially for wolfteam); Night only ends if all wolves choose the same targets now. If night times out, random targets are chosen; Added support for multiple kills (in preparation for wolf cub); Added wolf cub grow up condition (wolf cub grows up before traitor turn); Added confirmation before doing !quit; Added wolf cub death assigning angry condition (if wolf cub dies for any reason other than idling out/leaving during game, wolves get two kills the following night); Reworked kill command to support killing multiple targets; Added wolf cub to gamemodes
 
 6/3/2017 - Fixed a bug that made lycan activate on the night it was given rather than the night after; Fixed a bug where an injured player could still use the abstain command
