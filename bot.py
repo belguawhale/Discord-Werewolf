@@ -379,14 +379,14 @@ async def cmd_fleave(message, parameters):
                 leave_msg += "**" + get_name(member) + "** was forcibly shoved into a fire. The air smells of freshly burnt **" + get_role(member, 'death') + "**.\n"
             else:
                 leave_msg += "**" + get_name(member) + "** was forced to leave the game.\n"
-            await player_death(member, 'fleave')
+            member_ = member
     if not session[0]:
         leave_msg += "New player count: **{}**".format(len(session[1]))
         if len(session[1]) == 0:
             await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
     await send_lobby(leave_msg)
-    if member in list(session[1]) and session[0]:
-        await player_death(member, 'fleave')
+    if member_ in list(session[1]) and session[0]:
+        await player_death(member_, 'fleave')
     await log(2, "{0} ({1}) used FLEAVE {2}".format(message.author.name, message.author.id, parameters))
     if session[0] and win_condition() == None:
         await check_traitor()
