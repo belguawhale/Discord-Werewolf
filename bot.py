@@ -895,6 +895,8 @@ async def cmd_choose(message, parameters):
                 else:
                     await reply(message, "Could not find player " + player2 if player1 in session[1] else player1)
                     return
+            elif len(parameters) == 1:
+                await reply(message, "You must choose two people.")
 
 @cmd('kill', [2, 0], "```\n{0}kill <player>\n\nIf you are a wolf, casts your vote to target <player>. If you are a "
                      "hunter, <player> will die the following night.```")
@@ -2181,8 +2183,14 @@ def win_condition():
         return None
     
     for player in session[1]:
-        lover = o.split(':')[1]
-        if get_role(player, 'actualteam') == win_team or (session[1][player][0] and session[1][lover][0]):
+        for n in session[1][player][4]:
+            if n.startswith('lover:'):
+                o.append(n.split(':')[1])
+        if o:
+            lover = o
+        else:
+            lover = []
+        if get_role(player, 'actualteam') == win_team or (session[1][player][0] and len([x for x in lover if session[1][x][0]) > 0):
             winners.append(player)
     return [win_team, win_lore + '\n\n' + end_game_stats(), winners]
 
@@ -3220,7 +3228,7 @@ COMMANDS_FOR_ROLE = {'see' : ['seer', 'oracle', 'augur'],
                      'shoot' : ['gunner'],
                      'observe' : ['werecrow', 'sorcerer'],
                      'pass' : ['harlot', 'hunter'],
-                     'id' : ['detective']
+                     'id' : ['detective'],
                      'choose' : ['matchmaker']}
 GAMEPLAY_COMMANDS = ['join', 'j', 'start', 'vote', 'lynch', 'v', 'abstain', 'abs', 'nl', 'stats', 'leave', 'q', 'role', 'roles']
 GAMEPLAY_COMMANDS += list(COMMANDS_FOR_ROLE)
@@ -3299,7 +3307,7 @@ gamemodes = {
             'detective' :
             [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'villager' :
-            [2, 3, 4, 3, 3, 3,  3, 4, 3, 3, 4, 4, 4, 5, 5, 6, 5],
+            [2, 3, 4, 3, 3, 3,  3, 3, 2, 2, 3, 3, 3, 4, 4, 5, 4],
             'crazed shaman' :
             [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2],
             'cursed villager' :
@@ -3307,7 +3315,7 @@ gamemodes = {
             'gunner' :
             [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'matchmaker' :
-            [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+            [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
         },
     'test' : {
         'description' : "Gamemode for testing stuff.",
@@ -3342,7 +3350,7 @@ gamemodes = {
             'detective' :
             [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'villager' :
-            [2, 3, 4, 3, 3, 3,  3, 4, 3, 3, 4, 4, 4, 5, 5, 6, 5],
+            [2, 3, 4, 3, 3, 3,  3, 3, 2, 2, 3, 3, 3, 4, 4, 5, 4],
             'crazed shaman' :
             [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2],
             'cursed villager' :
