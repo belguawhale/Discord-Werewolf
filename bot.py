@@ -296,9 +296,9 @@ async def cmd_leave(message, parameters):
         if not session[1][message.author.id][0]:
             # prevent race condition where user runs this command multiple times and then says "yes"
             return
-        await player_death(message.author.id, 'leave')
         await send_lobby(random.choice(lang['leavedeath']).format(
             message.author.name, get_role(message.author.id, 'death')))
+        await player_death(message.author.id, 'leave')
         if message.author.id in stasis:
             stasis[message.author.id] += QUIT_GAME_STASIS
         else:
@@ -385,6 +385,8 @@ async def cmd_fleave(message, parameters):
         if len(session[1]) == 0:
             await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
     await send_lobby(leave_msg)
+    if member in list(session[1]) and session[0]:
+        await player_death(member, 'fleave')
     await log(2, "{0} ({1}) used FLEAVE {2}".format(message.author.name, message.author.id, parameters))
     if session[0] and win_condition() == None:
         await check_traitor()
@@ -667,6 +669,8 @@ async def _send_role_info(player, sendrole=True):
                                    "`{}role gunner` for more information.".format(
                             session[1][player][4].count('bullet'), '' if session[1][player][4].count('bullet') == 1 else 's',
                             BOT_PREFIX))
+                    if role == 'matchmaker' and sendrole:
+                        msg.append("Living players: ```basic\n" + '\n'.join(living_players_string) + '\n```')
                     if msg:
                         await client.send_message(member, '\n'.join(msg))
                 except discord.Forbidden:
@@ -846,6 +850,51 @@ async def cmd_see(message, parameters):
                     await log(1, "{0} ({1}) SEE {2} ({3}) AS {4}".format(get_name(message.author.id), message.author.id, get_name(player), player, seen_role))
             else:
                 await reply(message, "Could not find player " + parameters)
+
+@cmd('choose', [2, 0], "```\n{0}choose <player1> and <player2>\n\nIf you are a matchmaker, Selects two players to fall in love. You may select yourself as one of the lovers.```")
+async def cmd_choose(message, parameters):
+    if not session[0] or get_role(message.author.id, 'role') not in COMMANDS_FOR_ROLE['choose'] or not session[1][message.author.id][0] or not message.channel.is_private:
+        return
+    if parameters == "":
+        await reply(message, roles[session[1][message.author.id][1]][2])
+    else:
+        if get_role(message.author.id, 'role') == 'matchmaker' and 'match' in session[1][message.author.id][4] and not session[2]:
+            parameters = parameters.lower().split(" and ")
+            if len(parameters) == 2:
+                player1 = get_player(parameters[0])
+                player2 = get_player(parameters[1])
+                if player1 and player2:
+                    if session[1][player1][0] and session[1][player2][0]:
+                        if player1 == player2:
+                            await reply(message, "You must choose two different people.")
+                            return
+                        else:
+                            await reply(message, "You have selected **{0}** and **{1}** to be lovers.".format(get_name(player1), get_name(player2)))
+                            session[1][message.author.id][4].remove('match')
+                            session[1][player1][4].append("lover:" + player2)
+                            session[1][player2][4].append("lover:" + player1)
+                            await log(1,
+                                      "{0} ({1}) CHOOSE {2},{3} ({4},{5})".format(get_name(message.author.id), message.author.id,
+                                                                        get_name(player1), get_name(player2), player1, player2))
+                            try:
+                                await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player1),
+                                                          "You are in love with **{0}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.".format(
+                                                              get_name(player2)))
+                            except:
+                                pass
+                            try:
+                                await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player2),
+                                                          "You are in love with **{0}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.".format(
+                                                              get_name(player1)))
+                            except:
+                                pass
+                            return
+                    else:
+
+                        await reply(message, "Player **{}** is dead!".format(get_name(player2) if session[1][player1][0] else get_name(player1)))
+                else:
+                    await reply(message, "Could not find player " + player2 if player1 in session[1] else player1)
+                    return
 
 @cmd('kill', [2, 0], "```\n{0}kill <player>\n\nIf you are a wolf, casts your vote to target <player>. If you are a "
                      "hunter, <player> will die the following night.```")
@@ -2132,7 +2181,8 @@ def win_condition():
         return None
     
     for player in session[1]:
-        if get_role(player, 'actualteam') == win_team:
+        lover = o.split(':')[1]
+        if get_role(player, 'actualteam') == win_team or (session[1][player][0] and session[1][lover][0]):
             winners.append(player)
     return [win_team, win_lore + '\n\n' + end_game_stats(), winners]
 
@@ -2462,6 +2512,13 @@ async def player_death(player, reason='No reason specified'):
     ingame = 'IN GAME'
     if session[0] and reason != 'game cancel':
         session[1][player][0] = False
+        for o in session[1][player][4]:
+            if o.startswith('lover:'):
+                lover = o.split(":")[1]
+                if session[0]:
+                    if session[1][lover][0]:
+                        await client.send_message(client.get_channel(GAME_CHANNEL), "Saddened by the loss of their lover, **{0}**, a{1} **{2}**, commits suicide.".format(get_name(lover), "n" if get_role(lover, "death").lower()[0] in ['a', 'e', 'i', 'o', 'u'] else "", get_role(lover, "death")))
+                        await player_death(lover, "lover suicide")
     else:
         ingame = 'NOT IN GAME'
         del session[1][player]
@@ -2698,6 +2755,29 @@ async def game_loop(ses=None):
                                 await client.send_message(member, random_given)
                             except discord.Forbidden:
                                 pass
+                    elif role == 'matchmaker' and 'match' in session[1][player][4]:
+                        player1 = random.choice([x for x in session[1] if session[1][x][0]])
+                        player2 = random.choice([x for x in session[1] if session[1][x][0] and x != player1])
+                        session[1][player][4].remove('match')
+                        session[1][player1][4].append('lover:' + player2)
+                        session[1][player2][4].append('lover:' + player1)
+                        try:
+                            await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player),
+                                                      "Because you forgot to choose lovers at night, two lovers have been selected for you.")
+                        except:
+                            pass
+                        try:
+                            await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player1),
+                                                      "You are in love with **{0}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.".format(
+                                                          get_name(player2)))
+                        except:
+                            pass
+                        try:
+                            await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player2),
+                                                      "You are in love with **{0}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.".format(
+                                                          get_name(player1)))
+                        except:
+                            pass
                     elif role == 'harlot' and session[1][player][2] == '':
                         member = client.get_server(WEREWOLF_SERVER).get_member(player)
                         session[1][player][2] = player
@@ -2935,6 +3015,14 @@ async def game_loop(ses=None):
                     await send_lobby(random.choice(lang['hastotems']).format('**, **'.join([get_name(x) for x in totem_holders[:-1]]), get_name(totem_holders[-1])))
 
             for player in killed_temp:
+                lover = o.split(':')[1]
+                if lover in killed_temp and player in killed_temp:
+                    #fix for lover suicide message appears if player dies even tho lover died already
+                    session[1][player][4].remove('lover:' + lover)
+                    session[1][lover][4].remove('lover:' + player)
+                    await player_death(player, 'night kill')
+                    session[1][player][4].append('lover:' + lover)
+                    session[1][lover][4].append('lover:' + player)
                 await player_death(player, 'night kill')
 
             for player in wolf_turn:
@@ -3132,7 +3220,8 @@ COMMANDS_FOR_ROLE = {'see' : ['seer', 'oracle', 'augur'],
                      'shoot' : ['gunner'],
                      'observe' : ['werecrow', 'sorcerer'],
                      'pass' : ['harlot', 'hunter'],
-                     'id' : ['detective']}
+                     'id' : ['detective']
+                     'choose' : ['matchmaker']}
 GAMEPLAY_COMMANDS = ['join', 'j', 'start', 'vote', 'lynch', 'v', 'abstain', 'abs', 'nl', 'stats', 'leave', 'q', 'role', 'roles']
 GAMEPLAY_COMMANDS += list(COMMANDS_FOR_ROLE)
 
@@ -3170,7 +3259,11 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
          'cursed villager' : ['template', 'cursed villagers', "This template is hidden and is seen as a wolf by the seer. Roles normally seen as wolf, the seer, and the fool cannot be cursed."],
          'gunner' : ['template', 'gunners', "This template gives the player a gun. Type `{0}shoot <player>` in channel during the day to shoot <player>. "
                                             "If you are a villager and shoot a wolf, they will die. Otherwise, there is a chance of killing them, injuring "
-                                            "them, or the gun exploding. If you are a wolf and shoot at a wolf, you will intentionally miss."]}
+                                            "them, or the gun exploding. If you are a wolf and shoot at a wolf, you will intentionally miss."],
+         'matchmaker' : ['village', 'matchmakers', "You can select two players to be lovers with `{0}choose <player1> and <player2>`."
+                                                   " If one lover dies, the other will as well. You may select yourself as one of the lovers."
+                                                   " You may only select lovers during the first night."
+                                                   " If you do not select lovers, they will be randomly selected and you will not be told who they are (unless you are one of them)."]}
 
 gamemodes = {
     'default' : {
@@ -3212,7 +3305,9 @@ gamemodes = {
             'cursed villager' :
             [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3],
             'gunner' :
-            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            'matchmaker' :
+            [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
         },
     'test' : {
         'description' : "Gamemode for testing stuff.",
@@ -3253,7 +3348,9 @@ gamemodes = {
             'cursed villager' :
             [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3],
             'gunner' :
-            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            'matchmaker' :
+            [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
     },
     'foolish' : {
         'description' : "Watch out, because the fool is always there to steal the win.",
@@ -3428,6 +3525,8 @@ gamemodes = {
             'cursed villager' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'gunner' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'matchmaker' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
     },
     'template' : {
@@ -3473,12 +3572,14 @@ gamemodes = {
             'cursed villager' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'gunner' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'matchmaker' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
     }
 }
 gamemodes['belunga']['roles'] = dict(gamemodes['default']['roles'])
 
-VILLAGE_ROLES_ORDERED = ['seer', 'oracle', 'shaman', 'harlot', 'hunter', 'augur', 'detective', 'villager']
+VILLAGE_ROLES_ORDERED = ['seer', 'oracle', 'shaman', 'harlot', 'hunter', 'augur', 'detective', 'villager', 'matchmaker']
 WOLF_ROLES_ORDERED = ['wolf', 'werecrow', 'wolf cub', 'werekitten', 'traitor', 'sorcerer', 'cultist']
 NEUTRAL_ROLES_ORDERED = ['crazed shaman', 'fool']
 TEMPLATES_ORDERED = ['cursed villager', 'gunner']
