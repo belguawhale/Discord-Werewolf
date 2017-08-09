@@ -2190,7 +2190,7 @@ def win_condition():
             lover = o
         else:
             lover = []
-        if get_role(player, 'actualteam') == win_team or (session[1][player][0] and len([x for x in lover if session[1][x][0]) > 0):
+        if get_role(player, 'actualteam') == win_team or (session[1][player][0] and len([x for x in lover if session[1][x][0]]) > 0):
             winners.append(player)
     return [win_team, win_lore + '\n\n' + end_game_stats(), winners]
 
@@ -3023,15 +3023,25 @@ async def game_loop(ses=None):
                     await send_lobby(random.choice(lang['hastotems']).format('**, **'.join([get_name(x) for x in totem_holders[:-1]]), get_name(totem_holders[-1])))
 
             for player in killed_temp:
-                lover = o.split(':')[1]
-                if lover in killed_temp and player in killed_temp:
-                    #fix for lover suicide message appears if player dies even tho lover died already
-                    session[1][player][4].remove('lover:' + lover)
-                    session[1][lover][4].remove('lover:' + player)
+                lovers = []
+                for o in session[1][player][4]:
+                    if o.startswith("lover:"):
+                        lovers.append(o.split(':')[1])
+                for lover in lovers:
+                    if lover in killed_temp:
+                        # fix for lover suicide message appears if player dies even tho lover died already
+                        for l in lovers:
+                            if l == lover:
+                                session[1][player][4].remove('lover:' + lover)
+                                session[1][lover][4].remove('lover:' + player)
                     await player_death(player, 'night kill')
-                    session[1][player][4].append('lover:' + lover)
-                    session[1][lover][4].append('lover:' + player)
-                await player_death(player, 'night kill')
+                    if lover in killed_temp:
+                        for l in lovers:
+                            if l == lover:
+                                session[1][player][4].append('lover:' + lover)
+                                session[1][lover][4].append('lover:' + player)
+                if lovers == []:
+                    await player_death(player, 'night kill')
 
             for player in wolf_turn:
                 session[1][player][1] = 'wolf'
