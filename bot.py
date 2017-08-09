@@ -3138,7 +3138,15 @@ async def game_loop(ses=None):
                         await player_death(lynched_player, 'lynch')
                     if get_role(lynched_player, 'role') == 'fool' and 'revealing_totem' not in session[1][lynched_player][4]:
                         win_msg = "The fool has been lynched, causing them to win!\n\n" + end_game_stats()
-                        await end_game(win_msg, [lynched_player])
+                        o = []
+                        for n in session[1][lynched_player][4]:
+                            if n.startswith('lover:'):
+                                o.append(n.split(':')[1])
+                        if o:
+                            lovers = o
+                        else:
+                            lovers = []
+                        await end_game(win_msg, [lynched_player] + lovers)
                         return
             elif lynched_player == None and win_condition() == None and session[0]:
                 await send_lobby("Not enough votes were cast to lynch a player.")
