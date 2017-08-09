@@ -358,8 +358,10 @@ async def cmd_fleave(message, parameters):
     raw_members = parameters.split(' ')
     leave_list = []
     if parameters == 'all':
+        reason = "fleave all"
         leave_list = list(session[1])
     else:
+        reason = "fleave"
         for member in raw_members:
             if member.strip('<!@>').isdigit():
                 leave_list.append(member.strip('<!@>'))
@@ -379,14 +381,14 @@ async def cmd_fleave(message, parameters):
                 leave_msg += "**" + get_name(member) + "** was forcibly shoved into a fire. The air smells of freshly burnt **" + get_role(member, 'death') + "**.\n"
             else:
                 leave_msg += "**" + get_name(member) + "** was forced to leave the game.\n"
-            member_ = member
     if not session[0]:
         leave_msg += "New player count: **{}**".format(len(session[1]))
         if len(session[1]) == 0:
             await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
     await send_lobby(leave_msg)
-    if member_ in list(session[1]) and session[0]:
-        await player_death(member_, 'fleave')
+    for member in sort_players(leave_list):
+        if member in list(session[1]):
+            await player_death(member, reason)
     await log(2, "{0} ({1}) used FLEAVE {2}".format(message.author.name, message.author.id, parameters))
     if session[0] and win_condition() == None:
         await check_traitor()
@@ -2183,6 +2185,7 @@ def win_condition():
         return None
     
     for player in session[1]:
+        o = []
         for n in session[1][player][4]:
             if n.startswith('lover:'):
                 o.append(n.split(':')[1])
@@ -2524,7 +2527,7 @@ async def player_death(player, reason='No reason specified'):
             if o.startswith('lover:'):
                 lover = o.split(":")[1]
                 if session[0]:
-                    if session[1][lover][0]:
+                    if session[1][lover][0] and reason != "fleave all":
                         await client.send_message(client.get_channel(GAME_CHANNEL), "Saddened by the loss of their lover, **{0}**, a{1} **{2}**, commits suicide.".format(get_name(lover), "n" if get_role(lover, "death").lower()[0] in ['a', 'e', 'i', 'o', 'u'] else "", get_role(lover, "death")))
                         await player_death(lover, "lover suicide")
     else:
@@ -2533,7 +2536,7 @@ async def player_death(player, reason='No reason specified'):
     member = client.get_server(WEREWOLF_SERVER).get_member(player)
     if member:
         await client.remove_roles(member, PLAYERS_ROLE)
-    if session[0] and reason not in ['idle', 'fleave', 'leave', 'fstop', 'game end']:
+    if session[0] and reason not in ['idle', 'fleave', 'leave', 'fstop', 'game end', 'fleave all']:
         if get_role(player, 'role') == 'wolf cub':
             for p in session[1]:
                 if session[1][p][0] and get_role(p, 'role') in ACTUAL_WOLVES + ['traitor']:
