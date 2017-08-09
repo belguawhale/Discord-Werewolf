@@ -2685,6 +2685,8 @@ async def game_loop(ses=None):
                     log_msg.append("{} ({}) HAS {}".format(get_name(player), player, session[1][player][2]))
                 elif role == 'hunter' and session[1][player][0] and 'hunterbullet' not in session[1][player][4]:
                     session[1][player][2] = player
+                elif role == 'matchmaker' and 'match' not in session[1][player][4]:
+                    session[1][player][4].append('match')
 
                 if first_night:
                     await _send_role_info(player)
