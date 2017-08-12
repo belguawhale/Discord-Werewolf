@@ -860,7 +860,10 @@ async def cmd_choose(message, parameters):
     if parameters == "":
         await reply(message, roles[session[1][message.author.id][1]][2])
     else:
-        if get_role(message.author.id, 'role') == 'matchmaker' and 'match' in session[1][message.author.id][4] and not session[2]:
+        if get_role(message.author.id, 'role') == 'matchmaker' and str(session[4][1]) == "0:00:00":
+            if 'match' not in session[1][message.author.id][4]:
+                await reply(message, "You have already chosen lovers.")
+                return
             parameters = parameters.lower().split(" and ")
             if len(parameters) == 2:
                 player1 = get_player(parameters[0])
@@ -897,8 +900,8 @@ async def cmd_choose(message, parameters):
                 else:
                     await reply(message, "Could not find player " + player2 if player1 in session[1] else player1)
                     return
-            elif len(parameters) == 1:
-                await reply(message, "You must choose two people.")
+            elif len(parameters) < 2:
+                await reply(message, "You must choose two diffrent people.")
 
 @cmd('kill', [2, 0], "```\n{0}kill <player>\n\nIf you are a wolf, casts your vote to target <player>. If you are a "
                      "hunter, <player> will die the following night.```")
@@ -2768,7 +2771,7 @@ async def game_loop(ses=None):
                                 await client.send_message(member, random_given)
                             except discord.Forbidden:
                                 pass
-                    elif role == 'matchmaker' and 'match' in session[1][player][4]:
+                    elif role == 'matchmaker' and 'match' in session[1][player][4] and str(session[4][1]) == "0:00:00":
                         player1 = random.choice([x for x in session[1] if session[1][x][0]])
                         player2 = random.choice([x for x in session[1] if session[1][x][0] and x != player1])
                         session[1][player][4].remove('match')
