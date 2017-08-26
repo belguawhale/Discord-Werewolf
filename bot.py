@@ -876,8 +876,10 @@ async def cmd_choose(message, parameters):
                         else:
                             await reply(message, "You have selected **{0}** and **{1}** to be lovers.".format(get_name(player1), get_name(player2)))
                             session[1][message.author.id][4].remove('match')
-                            session[1][player1][4].append("lover:" + player2)
-                            session[1][player2][4].append("lover:" + player1)
+                            if "lover:" + player2 not in session[1][player1][4]:
+                                session[1][player1][4].append("lover:" + player2)
+                            if "lover:" + player1 not in session[1][player2][4]:
+                                session[1][player2][4].append("lover:" + player1)
                             await log(1,
                                       "{0} ({1}) CHOOSE {2},{3} ({4},{5})".format(get_name(message.author.id), message.author.id,
                                                                         get_name(player1), get_name(player2), player1, player2))
@@ -2174,9 +2176,23 @@ def win_condition():
     win_team = ''
     win_lore = ''
     win_msg = ''
+    lovers = []
+    players = session[1]
+    for plr in players:
+        for o in players[plr][4]:
+            if o.startswith("lover:"):
+                lvr = o.split(':')[1]
+                if lvr in players:
+                    if plr not in lovers and session[1][plr][0]:
+                        lovers.append(plr)
+                    if lvr not in lovers and session[1][lvr][0]:
+                        lovers.append(lvr)
     if len([x for x in session[1] if session[1][x][0]]) == 0:
         win_lore = 'Everyone died. The town sits abandoned, collecting dust.'
         win_team = 'no win'
+    elif len(lovers) == len([x for x in session[1] if session[1][x][0]]):
+        win_team = 'lovers'
+        win_lore = "Game over! The remaining villagers through their inseparable love for each other have agreed to stop all of this senseless violence and coexist in peace forever more. All remaining players win."
     elif teams['village'] + teams['neutral'] <= teams['wolf']:
         win_team = 'wolf'
         win_lore = 'The number of uninjured villagers is equal or less than the number of living wolves! The wolves overpower the remaining villagers and devour them whole.'
@@ -2196,7 +2212,7 @@ def win_condition():
             lover = o
         else:
             lover = []
-        if get_role(player, 'actualteam') == win_team or (session[1][player][0] and len([x for x in lover if session[1][x][0]]) > 0):
+        if get_role(player, 'actualteam') == win_team or (session[1][player][0] and len([x for x in lover if session[1][x][0]]) > 0) or (player in lovers if win_team == "lovers" else False):
             winners.append(player)
     return [win_team, win_lore + '\n\n' + end_game_stats(), winners]
 
@@ -2227,7 +2243,45 @@ def end_game_stats():
             role_msg += "The **{}** were **{}** and **{}**. ".format(roles[key][1], get_name(value[0]), get_name(value[1]))
         else:
             role_msg += "The **{}** were **{}**, and **{}**. ".format(roles[key][1], '**, **'.join(map(get_name, value[:-1])), get_name(value[-1]))
-    return role_msg
+    lovers = []
+    for player in session[1]:
+            for o in session[1][player][4]:
+                if o.startswith("lover:"):
+                    lover = o.split(':')[1]
+                    lovers.append(sort_players([player, lover]))
+    lovers_dict_sorted = {}
+    lovers_sorted = []
+    for e in lovers:
+        if e[0] in lovers_dict_sorted:
+            lovers_dict_sorted[e[0]] += [e[1]]
+        else:
+            lovers_dict_sorted[e[0]] = [e[1]]
+    for k in lovers_dict_sorted:
+        lovers_dict_sorted[k] = sort_players(lovers_dict_sorted[k])
+    for k in lovers_dict_sorted:
+        for v in lovers_dict_sorted[k]:
+            lovers_sorted.append([v, k])
+    lovers_dict_sorted = {}
+    for e in lovers_sorted:
+        if e[0] in lovers_dict_sorted:
+            lovers_dict_sorted[e[0]] += [e[1]]
+        else:
+            lovers_dict_sorted[e[0]] = [e[1]]
+    temp_dict = {}
+    for k in sort_players(lovers_dict_sorted):
+        temp_dict[k] = sort_players(lovers_dict_sorted[k])
+    lovers_dict_sorted = temp_dict
+    lovers_msg = "The lovers were "
+    tmp = []
+    for player in lovers_dict_sorted:
+        for lover in lovers_dict_sorted[player]:
+            if not [player, lover] in tmp:
+                tmp.append([player, lover])
+                lovers_msg += "**{}**/**{}**, ".format(get_name(player), get_name(lover))
+    if lovers_dict_sorted:
+        return role_msg + " " + lovers_msg
+    else:
+        return role_msg
 
 def get_name(player):
     member = client.get_server(WEREWOLF_SERVER).get_member(player)
@@ -2530,7 +2584,7 @@ async def player_death(player, reason='No reason specified'):
             if o.startswith('lover:'):
                 lover = o.split(":")[1]
                 if session[0]:
-                    if session[1][lover][0] and reason != "fleave all":
+                    if session[1][lover][0] and reason != "fleave all" and not (reason == "lynch" and get_role(player, "role") == "fool"):
                         await client.send_message(client.get_channel(GAME_CHANNEL), "Saddened by the loss of their lover, **{0}**, a{1} **{2}**, commits suicide.".format(get_name(lover), "n" if get_role(lover, "death").lower()[0] in ['a', 'e', 'i', 'o', 'u'] else "", get_role(lover, "death")))
                         await player_death(lover, "lover suicide")
     else:
@@ -2772,26 +2826,37 @@ async def game_loop(ses=None):
                             except discord.Forbidden:
                                 pass
                     elif role == 'matchmaker' and 'match' in session[1][player][4] and str(session[4][1]) == "0:00:00":
-                        player1 = random.choice([x for x in session[1] if session[1][x][0]])
-                        player2 = random.choice([x for x in session[1] if session[1][x][0] and x != player1])
-                        session[1][player][4].remove('match')
-                        session[1][player1][4].append('lover:' + player2)
-                        session[1][player2][4].append('lover:' + player1)
+                        trycount = 0
+                        alreadytried = []
+                        while True:
+                            player1 = random.choice([x for x in session[1] if session[1][x][0]])
+                            player2 = random.choice([x for x in session[1] if session[1][x][0] and x != player1])
+                            if not ("lover:" + player2 in session[1][player1][4] or "lover:" + player1 in session[1][player2][4]):
+                                session[1][player][4].remove('match')
+                                session[1][player1][4].append('lover:' + player2)
+                                session[1][player2][4].append('lover:' + player1)
+                                try:
+                                    await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player1),
+                                                        "You are in love with **{0}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.".format(
+                                                            get_name(player2)))
+                                except:
+                                    pass
+                                try:
+                                    await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player2),
+                                                        "You are in love with **{0}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.".format(
+                                                            get_name(player1)))
+                                except:
+                                    pass
+                                await log(1, player + " matches " + player1 + " and " + player2 + " randomly")
+                                break
+                            elif [player1 + player2] not in alreadytried:
+                                trycount += 1
+                                alreadytried.append([player1 + player2])
+                            if trycount >= (len([x for x in session[1] if session[1][x][0]])*(len([x for x in session[1] if session[1][x][0]]) - 1)): #all possible lover sets are done
+                                break
                         try:
                             await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player),
                                                       "Because you forgot to choose lovers at night, two lovers have been selected for you.")
-                        except:
-                            pass
-                        try:
-                            await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player1),
-                                                      "You are in love with **{0}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.".format(
-                                                          get_name(player2)))
-                        except:
-                            pass
-                        try:
-                            await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player2),
-                                                      "You are in love with **{0}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.".format(
-                                                          get_name(player1)))
                         except:
                             pass
                     elif role == 'harlot' and session[1][player][2] == '':
@@ -3144,7 +3209,9 @@ async def game_loop(ses=None):
                         o = []
                         for n in session[1][lynched_player][4]:
                             if n.startswith('lover:'):
-                                o.append(n.split(':')[1])
+                                lvr = n.split(':')[1]
+                                if session[1][lvr][0]:
+                                    o.append(lvr)
                         if o:
                             lovers = o
                         else:
