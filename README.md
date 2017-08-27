@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+8/7/2017 - Fixed using commands before bot is ready; Added grace period before join start and !wait command; Fixed mentions being broken
+
 7/19/2017 - Added error checking in role attribution to reduce reliance on admins; Made the game loop stronger and self-restarting; Added error checking to sending message in lobby; Added oracle and augur roles; Added oracle and augur to gamemodes
 
 6/26/2017 - Fixed a bug where virtually no one would be notified; Detective reveal now gives you the id of the detective due to issues before -_-; Fixed a bug where game cancel would screw up session

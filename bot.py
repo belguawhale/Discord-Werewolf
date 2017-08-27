@@ -24,8 +24,12 @@ pingif_dict = {}
 notify_me = []
 stasis = {}
 commands = {}
+
+wait_bucket = WAIT_BUCKET_INIT
+wait_timer = datetime.now()
+
 faftergame = None
-starttime = datetime.now()
+starttime = None
 with open(NOTIFY_FILE, 'a+') as notify_file:
     notify_file.seek(0)
     notify_me = notify_file.read().split(',')
@@ -72,10 +76,14 @@ def cmd(name, perms, description, *aliases):
 
 @client.event
 async def on_ready():
+    global starttime
     print('Logged in as')
     print(client.user.name)
     print(client.user.id)
     print('------')
+    if starttime:
+        await log(1, 'on_ready triggered again!')
+        return
     await log(1, 'on_ready triggered!')
     # [playing : True | False, players : {player id : [alive, role, action, template, other]}, day?, [datetime night, datetime day], [elapsed night, elapsed day], first join time, gamemode]
     for role in client.get_server(WEREWOLF_SERVER).role_hierarchy:
@@ -102,6 +110,7 @@ async def on_ready():
         await log(2, "Could not find Werewolf Notify role " + WEREWOLF_NOTIFY_ROLE_NAME)
     if PLAYING_MESSAGE:
         await client.change_presence(status=discord.Status.online, game=discord.Game(name=PLAYING_MESSAGE))
+    starttime = datetime.now()
 
 @client.event
 async def on_resume():
@@ -110,6 +119,8 @@ async def on_resume():
 
 @client.event
 async def on_message(message):
+    if not starttime:
+        return
     if message.author.id in [client.user.id] + IGNORE_LIST or not client.get_server(WEREWOLF_SERVER).get_member(message.author.id):
         if not (message.author.id in ADMINS or message.author.id == OWNER_ID):
             return
@@ -167,7 +178,7 @@ async def cmd_eval(message, parameters):
         return
     if asyncio.iscoroutine(output):
         output = await output
-    await reply(message, '```py\n' + str(output) + '\n```')
+    await reply(message, '```py\n' + str(output) + '\n```', cleanmessage=False)
 
 @cmd('exec', [2, 2], "```\n{0}exec <exec string>\n\nExecutes <exec string> using Python\'s exec() function. Owner-only.```")
 async def cmd_exec(message, parameters):
@@ -251,6 +262,8 @@ async def cmd_list(message, parameters):
 
 @cmd('join', [0, 1], "```\n{0}join [<gamemode>]\n\nJoins the game if it has not started yet. Votes for [<gamemode>] if it is given.```", 'j')
 async def cmd_join(message, parameters):
+    global wait_timer # ugh globals
+    global wait_bucket
     if session[0]:
         return
     if message.author.id in stasis and stasis[message.author.id] > 0:
@@ -265,7 +278,10 @@ async def cmd_join(message, parameters):
     else:
         session[1][message.author.id] = [True, '', '', [], []]
         if len(session[1]) == 1:
+            wait_bucket = WAIT_BUCKET_INIT
+            wait_timer = datetime.now() + timedelta(seconds=EXTRA_WAIT)
             client.loop.create_task(game_start_timeout_loop())
+            client.loop.create_task(wait_timer_loop())
             await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.idle)
             await send_lobby(random.choice(lang['gamestart']).format(
                                             message.author.name, p=BOT_PREFIX))
@@ -276,7 +292,8 @@ async def cmd_join(message, parameters):
             await cmd_vote(message, parameters)
         #                            alive, role, action, [templates], [other]
         await client.add_roles(client.get_server(WEREWOLF_SERVER).get_member(message.author.id), PLAYERS_ROLE)
-        await player_idle(message)
+        wait_timer = datetime.now() + timedelta(seconds=EXTRA_WAIT)
+        client.loop.create_task(player_idle(message))
 
 @cmd('leave', [0, 1], "```\n{0}leave takes no arguments\n\nLeaves the current game. If you need to leave, please do it before the game starts.```", 'q')
 async def cmd_leave(message, parameters):
@@ -317,6 +334,20 @@ async def cmd_leave(message, parameters):
                 await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
         else:
             await reply(message, random.choice(lang['notplayingleave']))
+
+@cmd('wait', [0, 1], "```\n{0}wait takes no arguments\n\nIncreases the wait time until {0}start may be used.```", 'w')
+async def cmd_wait(message, parameters):
+    global wait_bucket
+    global wait_timer
+    if session[0] or message.author.id not in session[1]:
+        return
+    if wait_bucket <= 0:
+        wait_bucket = 0
+        await reply(message, "That command is ratelimited.")
+    else:
+        wait_timer = max(datetime.now() + timedelta(seconds=EXTRA_WAIT), wait_timer + timedelta(seconds=EXTRA_WAIT))
+        wait_bucket -= 1
+        await send_lobby("**{}** increased the wait time by {} seconds.".format(message.author.name, EXTRA_WAIT))
 
 @cmd('fjoin', [1, 1], "```\n{0}fjoin <mentions of users>\n\nForces each <mention> to join the game.```")
 async def cmd_fjoin(message, parameters):
@@ -422,12 +453,16 @@ async def cmd_start(message, parameters):
         return
     if session[1][message.author.id][1]:
         return
+    if datetime.now() < wait_timer:
+        await reply(message, "Please wait at least {} more second{}.".format(
+            int((wait_timer - datetime.now()).total_seconds()), '' if int((wait_timer - datetime.now()).total_seconds()) == 1 else 's'))
+        return
     session[1][message.author.id][1] = 'start'
     votes = len([x for x in session[1] if session[1][x][1] == 'start'])
     votes_needed = max(2, min(len(session[1]) // 4 + 1, 4))
     if votes < votes_needed:
         await send_lobby("**{}** has voted to start the game. **{}** more vote{} needed.".format(
-                                  message.author.display_name, votes_needed - votes, '' if (votes_needed - votes == 1) else 's'))
+            message.author.display_name, votes_needed - votes, '' if (votes_needed - votes == 1) else 's'))
     else:
         await run_game()
     if votes == 1:
@@ -460,7 +495,7 @@ async def cmd_fstop(message, parameters):
         await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
         for player in list(session[1]):
             await player_death(player, 'fstop')
-        session[3] = [0, 0]
+        session[3] = [datetime.now(), datetime.now()]
         session[4] = [timedelta(0), timedelta(0)]
         session[6] = ''
         session[7] = {}
@@ -1144,7 +1179,7 @@ async def cmd_coin(message, parameters):
 
 @cmd('admins', [0, 0], "```\n{0}admins takes no arguments\n\nLists online/idle admins if used in pm, and **alerts** online/idle admins if used in channel (**USE ONLY WHEN NEEDED**).```")
 async def cmd_admins(message, parameters):
-    await reply(message, 'Available admins: ' + ', '.join(['<@{}>'.format(x) for x in ADMINS if is_online(x)]))
+    await reply(message, 'Available admins: ' + ', '.join('<@{}>'.format(x) for x in ADMINS if is_online(x)), cleanmessage=False)
 
 @cmd('fday', [1, 2], "```\n{0}fday takes no arguments\n\nForces night to end.```")
 async def cmd_fday(message, parameters):
@@ -1282,7 +1317,7 @@ async def cmd_notify_role(message, parameters):
     member = client.get_server(WEREWOLF_SERVER).get_member(message.author.id)
     if not member:
         await reply(message, "You are not in the server!")
-    has_role = (WEREWOLF_NOTIFY_ROLE in member.roles)
+    has_role = WEREWOLF_NOTIFY_ROLE in member.roles
     if parameters == '':
         has_role = not has_role
     elif parameters in ['true', '+', 'yes']:
@@ -1369,7 +1404,7 @@ async def cmd_pingif(message, parameters):
 async def cmd_online(message, parameters):
     members = [x.id for x in message.server.members]
     online = ["<@{}>".format(x) for x in members if is_online(x)]
-    await reply(message, "PING! {}".format(''.join(online)))
+    await reply(message, "PING! {}".format(''.join(online)), cleanmessage=False)
 
 @cmd('notify', [0, 0], "```\n{0}notify [<true|false>]\n\nNotifies all online users who want to be notified, or adds/removes you from the notify list.```")
 async def cmd_notify(message, parameters):
@@ -1379,7 +1414,7 @@ async def cmd_notify(message, parameters):
     if parameters == '':
         online = ["<@{}>".format(x) for x in notify_me if is_online(x) and x not in session[1] and\
         (x in stasis and stasis[x] == 0 or x not in stasis)]
-        await reply(message, "PING! {}".format(''.join(online)))
+        await reply(message, "PING! {}".format(''.join(online)), cleanmessage=False)
     elif parameters in ['true', '+', 'yes']:
         if notify:
             await reply(message, "You are already in the notify list.")
@@ -2140,7 +2175,7 @@ async def end_game(reason, winners=None):
     await log(1, "WINNERS: {}".format(winners))
 
     players = list(session[1])
-    session[3] = [0, 0]
+    session[3] = [datetime.now(), datetime.now()]
     session[4] = [timedelta(0), timedelta(0)]
     session[6] = ''
     session[7] = {}
@@ -3299,10 +3334,19 @@ async def game_start_timeout_loop():
         for player in list(session[1]):
             await player_death(player, 'game cancel')
         session[0] = False
-        session[3] = [0, 0]
+        session[3] = [datetime.now(), datetime.now()]
         session[4] = [timedelta(0), timedelta(0)]
         session[6] = ''
         session[7] = {}
+
+async def wait_timer_loop():
+    global wait_bucket
+    timer = datetime.now()
+    while not session[0] and len(session[1]) > 0:
+        if datetime.now() - timer > timedelta(seconds=WAIT_BUCKET_DELAY):
+            timer = datetime.now()
+            wait_bucket = min(wait_bucket + 1, WAIT_BUCKET_MAX)
+        await asyncio.sleep(0.5)
 
 async def backup_settings_loop():
     while not client.is_closed:
