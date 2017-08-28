@@ -893,52 +893,54 @@ async def cmd_choose(message, parameters):
     if not session[0] or get_role(message.author.id, 'role') not in COMMANDS_FOR_ROLE['choose'] or not session[1][message.author.id][0] or not message.channel.is_private:
         return
     if parameters == "":
-        await reply(message, roles[session[1][message.author.id][1]][2])
+        await reply(message, roles[session[1][message.author.id][1]][2].format(BOT_PREFIX))
     else:
-        if get_role(message.author.id, 'role') == 'matchmaker' and str(session[4][1]) == "0:00:00":
+        if get_role(message.author.id, 'role') == 'matchmaker':
             if 'match' not in session[1][message.author.id][4]:
                 await reply(message, "You have already chosen lovers.")
                 return
-            parameters = parameters.lower().split(" and ")
-            if len(parameters) == 2:
-                player1 = get_player(parameters[0])
-                player2 = get_player(parameters[1])
-                if player1 and player2:
-                    if session[1][player1][0] and session[1][player2][0]:
-                        if player1 == player2:
-                            await reply(message, "You must choose two different people.")
-                            return
-                        else:
-                            await reply(message, "You have selected **{0}** and **{1}** to be lovers.".format(get_name(player1), get_name(player2)))
-                            session[1][message.author.id][4].remove('match')
-                            if "lover:" + player2 not in session[1][player1][4]:
-                                session[1][player1][4].append("lover:" + player2)
-                            if "lover:" + player1 not in session[1][player2][4]:
-                                session[1][player2][4].append("lover:" + player1)
-                            await log(1,
-                                      "{0} ({1}) CHOOSE {2},{3} ({4},{5})".format(get_name(message.author.id), message.author.id,
-                                                                        get_name(player1), get_name(player2), player1, player2))
-                            try:
-                                await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player1),
-                                                          "You are in love with **{0}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.".format(
-                                                              get_name(player2)))
-                            except:
-                                pass
-                            try:
-                                await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player2),
-                                                          "You are in love with **{0}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.".format(
-                                                              get_name(player1)))
-                            except:
-                                pass
-                            return
-                    else:
-
-                        await reply(message, "Player **{}** is dead!".format(get_name(player2) if session[1][player1][0] else get_name(player1)))
-                else:
-                    await reply(message, "Could not find player " + player2 if player1 in session[1] else player1)
+            targets = parameters.split(' and ')
+            if len(targets) == 2:
+                actual_targets = []
+                for target in targets:
+                    player = get_player(target)
+                    if not player:
+                        await reply(message, "Could not find player " + target)
+                        return
+                    actual_targets.append(player)
+                actual_targets = set(actual_targets)
+                valid_targets = []
+                if len(actual_targets) != 2:
+                    await reply(message, "You may only choose **2** unique players to match.")
                     return
-            elif len(parameters) < 2:
-                await reply(message, "You must choose two diffrent people.")
+                for player in actual_targets:
+                    if not session[1][player][0]:
+                        await reply(message, "Player **" + get_name(player) + "** is dead!")
+                        return
+                    else:
+                        valid_targets.append(player)
+                valid_targets = sort_players(valid_targets)
+                await reply(message, "You have selected **{}** and **{}** to be lovers.".format(*map(get_name, valid_targets)))
+                session[1][message.author.id][4].remove('match')
+                player1 = valid_targets[0]
+                player2 = valid_targets[1]
+                if "lover:" + player2 not in session[1][player1][4]:
+                    session[1][player1][4].append("lover:" + player2)
+                if "lover:" + player1 not in session[1][player2][4]:
+                    session[1][player2][4].append("lover:" + player1)
+                await log(1, "{} ({}) CHOOSE {} ({}) AND {} ({})".format(get_name(message.author.id), message.author.id,
+                    get_name(player1), player1, get_name(player2), player2))
+                love_msg = "You are in love with **{}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide."
+                try:
+                    await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player1), love_msg.format(get_name(player2)))
+                except:
+                    pass
+                try:
+                    await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player2), love_msg.format(get_name(player1)))
+                except:
+                    pass
+            else:
+                await reply(message, "You must choose two different players.")
 
 @cmd('kill', [2, 0], "```\n{0}kill <player>\n\nIf you are a wolf, casts your vote to target <player>. If you are a "
                      "hunter, <player> will die the following night.```")
@@ -967,7 +969,7 @@ async def cmd_kill(message, parameters):
                 else:
                     session[1][message.author.id][2] = player
                     await reply(message, "You have chosen to kill **" + get_name(player) + "** tonight.")
-                    await log(1, "{0} ({1}) KILL {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
+                    await log(1, "{0} ({1}) HUNTERKILL {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
             else:        
                 await reply(message, "Could not find player " + parameters)
         elif roles[get_role(message.author.id, 'role')][0] == 'wolf':
@@ -1966,6 +1968,18 @@ async def cmd_pass(message, parameters):
         await reply(message, "wtf? (this is an error; please report to an admin")
     await log(1, "{0} ({1}) PASS".format(get_name(message.author.id), message.author.id))
 
+@cmd('cat', [0, 0], "```\n{0}cat takes no arguments\n\nFlips a cat.```")
+async def cmd_cat(message, parameters):
+    await reply(message, "The cat landed on **its feet**!")
+
+@cmd('fgoat', [1, 1], "```\n{0}fgoat <target>\n\nForcibly sends a goat to violently attack <target>.```")
+async def cmd_fgoat(message, parameters):
+    if parameters == '':
+        await reply(message, commands['fgoat'][2].format(BOT_PREFIX))
+        return
+    action = random.choice(['kicks', 'headbutts'])
+    await send_lobby("**{}**'s goat walks by and {} **{}**.".format(message.author.name, action, parameters))
+
 ######### END COMMANDS #############
 
 def has_privileges(level, message):
@@ -2120,6 +2134,8 @@ async def assign_roles(gamemode):
         session[1][player][1] = role
         if role == 'hunter':
             session[1][player][4].append('hunterbullet')
+        elif role == 'matchmaker':
+            session[1][player][4].append('match')
 
     for i in range(gamemode_roles['cursed villager'] if 'cursed villager' in gamemode_roles else 0):
         cursed_choices = [x for x in session[1] if get_role(x, 'role') not in\
@@ -2268,6 +2284,7 @@ def end_game_stats():
             role_dict['cursed villager'].append(player)
         if 'gunner' in session[1][player][3]:
             role_dict['gunner'].append(player)
+
     for key in sort_roles(role_dict):
         value = sort_players(role_dict[key])
         if len(value) == 0:
@@ -2278,45 +2295,45 @@ def end_game_stats():
             role_msg += "The **{}** were **{}** and **{}**. ".format(roles[key][1], get_name(value[0]), get_name(value[1]))
         else:
             role_msg += "The **{}** were **{}**, and **{}**. ".format(roles[key][1], '**, **'.join(map(get_name, value[:-1])), get_name(value[-1]))
+
     lovers = []
+
     for player in session[1]:
-            for o in session[1][player][4]:
-                if o.startswith("lover:"):
-                    lover = o.split(':')[1]
-                    lovers.append(sort_players([player, lover]))
-    lovers_dict_sorted = {}
-    lovers_sorted = []
-    for e in lovers:
-        if e[0] in lovers_dict_sorted:
-            lovers_dict_sorted[e[0]] += [e[1]]
-        else:
-            lovers_dict_sorted[e[0]] = [e[1]]
-    for k in lovers_dict_sorted:
-        lovers_dict_sorted[k] = sort_players(lovers_dict_sorted[k])
-    for k in lovers_dict_sorted:
-        for v in lovers_dict_sorted[k]:
-            lovers_sorted.append([v, k])
-    lovers_dict_sorted = {}
-    for e in lovers_sorted:
-        if e[0] in lovers_dict_sorted:
-            lovers_dict_sorted[e[0]] += [e[1]]
-        else:
-            lovers_dict_sorted[e[0]] = [e[1]]
-    temp_dict = {}
-    for k in sort_players(lovers_dict_sorted):
-        temp_dict[k] = sort_players(lovers_dict_sorted[k])
-    lovers_dict_sorted = temp_dict
-    lovers_msg = "The lovers were "
-    tmp = []
-    for player in lovers_dict_sorted:
-        for lover in lovers_dict_sorted[player]:
-            if not [player, lover] in tmp:
-                tmp.append([player, lover])
-                lovers_msg += "**{}**/**{}**, ".format(get_name(player), get_name(lover))
-    if lovers_dict_sorted:
-        return role_msg + " " + lovers_msg
+        for o in session[1][player][4]:
+            if o.startswith("lover:"):
+                lover = o.split(':')[1]
+                lovers.append(tuple(sort_players([player, lover])))
+    lovers = list(set(lovers))
+    # create a list of unique lover pairs
+    sorted_second_lover = sort_players(x[1] for x in lovers)
+    sorted_first_lover = sort_players(x[0] for x in lovers)
+    # sort by second lover then first lover in the pair
+    lovers_temp = []
+    for l in sorted_second_lover:
+        for pair in list(lovers):
+            if pair[1] == l:
+                lovers_temp.append(pair)
+                lovers.remove(pair)
+    lovers = list(lovers_temp)
+    lovers_temp = []
+    for l in sorted_first_lover:
+        for pair in list(lovers):
+            if pair[0] == l:
+                lovers_temp.append(pair)
+                lovers.remove(pair)
+    lovers = list(lovers_temp)
+
+    if len(lovers) == 0:
+        pass
+    elif len(lovers) == 1:
+        # *map(get_name, lovers[0]) just applies get_name to each lover then unpacks the result into format
+        role_msg += "The **lovers** were **{}/{}**. ".format(*map(get_name, lovers[0]))
+    elif len(lovers) == 2:
+        role_msg += "The **lovers** were **{}/{}** and **{}/{}**. ".format(*map(get_name, lovers[0] + lovers[1]))
     else:
-        return role_msg
+        role_msg += "The **lovers** were {}, and **{}/{}**. ".format(
+            ', '.join('**{}/{}**'.format(*map(get_name, x)) for x in lovers[:-1]), *map(get_name, lovers[-1]))
+    return role_msg
 
 def get_name(player):
     member = client.get_server(WEREWOLF_SERVER).get_member(player)
@@ -2777,8 +2794,6 @@ async def game_loop(ses=None):
                     log_msg.append("{} ({}) HAS {}".format(get_name(player), player, session[1][player][2]))
                 elif role == 'hunter' and session[1][player][0] and 'hunterbullet' not in session[1][player][4]:
                     session[1][player][2] = player
-                elif role == 'matchmaker' and 'match' not in session[1][player][4]:
-                    session[1][player][4].append('match')
 
                 if first_night:
                     await _send_role_info(player)
@@ -2803,6 +2818,8 @@ async def game_loop(ses=None):
                             end_night = end_night and (session[1][player][2] != '')
                         if role in ['shaman', 'crazed shaman']:
                             end_night = end_night and (session[1][player][2] in session[1])
+                        if role in ['matchmaker']:
+                            end_night = end_night and 'match' not in session[1][player][4]
                         if roles[role][0] == 'wolf' and role in COMMANDS_FOR_ROLE['kill']:
                             num_wolves += 1
                             num_kills = session[1][player][4].count('angry') + 1
@@ -3443,6 +3460,8 @@ gamemodes = {
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             'detective' :
             [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            'matchmaker' :
+            [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'villager' :
             [2, 3, 4, 3, 3, 3,  3, 3, 2, 2, 3, 3, 3, 4, 4, 5, 4],
             'crazed shaman' :
@@ -3450,9 +3469,7 @@ gamemodes = {
             'cursed villager' :
             [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3],
             'gunner' :
-            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            'matchmaker' :
-            [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
         },
     'test' : {
         'description' : "Gamemode for testing stuff.",
@@ -3486,6 +3503,8 @@ gamemodes = {
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1],
             'detective' :
             [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            'matchmaker' :
+            [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'villager' :
             [2, 3, 4, 3, 3, 3,  3, 3, 2, 2, 3, 3, 3, 4, 4, 5, 4],
             'crazed shaman' :
@@ -3493,9 +3512,7 @@ gamemodes = {
             'cursed villager' :
             [0, 0, 1, 1, 1, 1,  1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3],
             'gunner' :
-            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            'matchmaker' :
-            [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+            [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
     },
     'foolish' : {
         'description' : "Watch out, because the fool is always there to steal the win.",
@@ -3581,10 +3598,10 @@ gamemodes = {
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
             'seer' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
-            'shaman' :
-            [0, 0, 0, 1, 1, 1,  2, 2, 2, 3, 3, 3, 4],
             'harlot' :
             [3, 4, 4, 4, 3, 4,  3, 2, 3, 1, 2, 1, 1],
+            'matchmaker' :
+            [0, 0, 0, 1, 1, 1,  2, 2, 2, 3, 3, 3, 4],
             'villager' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0],
             'crazed shaman' :
@@ -3627,6 +3644,24 @@ gamemodes = {
         'max_players' : 20,
         'roles' : {}
         },
+    'valentines' : {
+        'description' : "Love and death are in the air, as the default role is matchmaker.",
+        # [8] wolf, wolf(2), matchmaker, matchmaker(2), matchmaker(3), matchmaker(4), matchmaker(5), matchmaker(6)
+        # [9] matchmaker(7) [10] matchmaker(8) [11] matchmaker(9) [12] monster [13] wolf(3) [14] matchmaker(10) [15] matchmaker(11)
+        # [16] matchmaker(12) [17] wolf(4) [18] mad scientist [19] matchmaker(13) [20] matchmaker(14) [21] wolf(5) [22] matchmaker(15) [23] matchmaker(16) [24] wolf(6)
+        'min_players' : 8,
+        'max_players' : 20,
+        'roles' : {
+            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16,17,18,19,20
+            'wolf' :
+            [0, 0, 0, 0, 2, 2,  2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4],
+            'matchmaker' :
+            [0, 0, 0, 0, 6, 7,  8, 9, 9, 9,10,11,12,12,12,13,14],
+            'crazed shaman' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
+            'fool' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1]}
+    },
     'random' : {
         'description' : "Other than ensuring the game doesn't end immediately, no one knows what roles will appear.",
         'min_players' : 8,
@@ -3661,6 +3696,8 @@ gamemodes = {
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'detective' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'matchmaker' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'villager' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'crazed shaman' :
@@ -3670,8 +3707,6 @@ gamemodes = {
             'cursed villager' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'gunner' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'matchmaker' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
     },
     'template' : {
@@ -3708,6 +3743,8 @@ gamemodes = {
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'detective' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'matchmaker' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'villager' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'crazed shaman' :
@@ -3717,14 +3754,12 @@ gamemodes = {
             'cursed villager' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'gunner' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'matchmaker' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
     }
 }
 gamemodes['belunga']['roles'] = dict(gamemodes['default']['roles'])
 
-VILLAGE_ROLES_ORDERED = ['seer', 'oracle', 'shaman', 'harlot', 'hunter', 'augur', 'detective', 'villager', 'matchmaker']
+VILLAGE_ROLES_ORDERED = ['seer', 'oracle', 'shaman', 'harlot', 'hunter', 'augur', 'detective', 'matchmaker', 'villager']
 WOLF_ROLES_ORDERED = ['wolf', 'werecrow', 'wolf cub', 'werekitten', 'traitor', 'sorcerer', 'cultist']
 NEUTRAL_ROLES_ORDERED = ['crazed shaman', 'fool']
 TEMPLATES_ORDERED = ['cursed villager', 'gunner']
