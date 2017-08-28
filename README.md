@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+8/28/2017 - Matchmaker role (thanks to imad!); Fixed some bugs and streamlined cmd_choose and end of game stats; Fixed role order with matchmaker; Replaced shaman in orgy gamemode with matchmaker; Added valentines gamemode; Fixed a bug where matchmaker would be automatically forced to end night
+
 8/7/2017 - Fixed using commands before bot is ready; Added grace period before join start and !wait command; Fixed mentions being broken
 
 7/19/2017 - Added error checking in role attribution to reduce reliance on admins; Made the game loop stronger and self-restarting; Added error checking to sending message in lobby; Added oracle and augur roles; Added oracle and augur to gamemodes
