@@ -874,12 +874,6 @@ async def cmd_see(message, parameters):
                         reply_msg = "is {}a **wolf**".format('**not** ' if seen_role == 'villager' else '')
                     elif role == 'augur':
                         seen_role = get_role(player, 'actualteam')
-                        if (session[1][player][4].count('deceit_totem2') +\
-                            session[1][message.author.id][4].count('deceit_totem2')) % 2 == 1:
-                            if seen_role == 'wolf':
-                                seen_role = 'village'
-                            else:
-                                seen_role = 'wolf'
                         reply_msg = "exudes a **{}** aura".format(
                             'red' if seen_role == 'wolf' else 'blue' if seen_role == 'village' else 'grey')
                     await reply(message, "You have a vision... in your vision you see that **{}** {}!".format(
@@ -2173,12 +2167,12 @@ async def end_game(reason, winners=None):
           \n{}\n\n".format('> <@'.join(sort_players(session[1])), session[4][0].seconds // 60, session[4][0].seconds % 60,
           session[4][1].seconds // 60, session[4][1].seconds % 60, (session[4][0].seconds + session[4][1].seconds) // 60,
           (session[4][0].seconds + session[4][1].seconds) % 60, reason)
-    if not winners == None:
+    if winners:
         for player in session[1]:
             # ALTERNATE WIN CONDITIONS
             if session[1][player][0] and get_role(player, 'role') == 'crazed shaman':
                 winners.append(player)
-        winners = sort_players(winners)
+        winners = sort_players(set(winners)) # set ensures winners are unique
         if len(winners) == 0:
             msg += "No one wins!"
         elif len(winners) == 1:
@@ -2322,7 +2316,6 @@ def end_game_stats():
                 lovers_temp.append(pair)
                 lovers.remove(pair)
     lovers = list(lovers_temp)
-
     if len(lovers) == 0:
         pass
     elif len(lovers) == 1:
@@ -2475,7 +2468,7 @@ def get_roles(gamemode, players):
                     available_roles = [x for x in roles if x not in TEMPLATES_ORDERED\
                                         and x not in ('villager', 'cultist')]
                     gamemode_roles = dict((x, 0) for x in available_roles)
-                    gamemode_roles[random.choice(ACTUAL_WOLVES)] += 1 # ensure at least 1 wolf that can kill
+                    gamemode_roles[random.choice([x for x in ACTUAL_WOLVES if x != 'wolf cub'])] += 1 # ensure at least 1 wolf that can kill
                     for i in range(players - 1):
                         gamemode_roles[random.choice(available_roles)] += 1
                     gamemode_roles['gunner'] = random.randrange(int(players ** 1.2 / 4))
@@ -3027,22 +3020,23 @@ async def game_loop(ses=None):
                         revenge_targets = [x for x in session[1] if session[1][x][0] and get_role(x, 'role') in [
                             'wolf', 'werecrow', 'werekitten']]
                         if get_role(player, 'role') == 'harlot' and get_role(session[1][player][2], 'role') in [
-                            'wolf', 'werecrow', 'werekitten']:
+                            'wolf', 'werecrow', 'wolf cub', 'werekitten']:
                             revenge_targets[:] = [session[1][player][2]]
                         else:
-                            revenge_targets[:] = [x for x in revenge_targets if session[1][x][2] in wolf_killed]
-                        revengekill = random.choice(revenge_targets)
-                        killed_dict[revengekill] += 100
-                        if killed_dict[revengekill] > 0:
-                            killed_msg += "While being attacked last night, **{}**'s totem emitted a bright flash of light. The dead body of **{}**".format(
-                                            get_name(player), get_name(revengekill))
-                            killed_msg += ", a **{}**, was found at the scene.\n".format(get_role(revengekill, 'role'))
+                            revenge_targets[:] = [x for x in revenge_targets if player in session[1][x][2].split(',')]
+                        if revenge_targets:
+                            revengekill = random.choice(revenge_targets)
+                            killed_dict[revengekill] += 100
+                            if killed_dict[revengekill] > 0:
+                                killed_msg += "While being attacked last night, **{}**'s totem emitted a bright flash of light. The dead body of **{}**".format(
+                                                get_name(player), get_name(revengekill))
+                                killed_msg += ", a **{}**, was found at the scene.\n".format(get_role(revengekill, 'role'))
 
                 other = session[1][player][4][:]
                 for o in other[:]:
                     # hacky way to get specific totems to last 2 nights
                     if o in ['death_totem', 'protection_totem', 'cursed_totem', 'retribution_totem', 'lycanthropy_totem2',
-                            'deceit_totem2', 'blinding_totem', 'angry']:
+                            'deceit_totem2', 'angry']:
                         other.remove(o)
                     elif o == 'lycanthropy_totem':
                         other.remove(o)
@@ -3058,7 +3052,7 @@ async def game_loop(ses=None):
                         revenge_targets = [x for x in session[1] if session[1][x][0] and get_role(x, 'role') in [
                             'wolf', 'werecrow', 'werekitten']]
                         if get_role(player, 'role') == 'harlot' and get_role(session[1][player][2], 'role') in [
-                            'wolf', 'werecrow', 'werekitten']:
+                            'wolf', 'werecrow', 'wolf cub', 'werekitten']:
                             revenge_targets[:] = [session[1][player][2]]
                         else:
                             revenge_targets[:] = [x for x in revenge_targets if session[1][x][2] in wolf_killed]
@@ -3165,7 +3159,7 @@ async def game_loop(ses=None):
                             if l == lover:
                                 session[1][player][4].append('lover:' + lover)
                                 session[1][lover][4].append('lover:' + player)
-                if lovers == []:
+                if not lovers:
                     await player_death(player, 'night kill')
 
             for player in wolf_turn:
