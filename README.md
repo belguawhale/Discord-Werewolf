@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+11/25/2017 - Anniversary update! Reduced wait on join to 15 seconds; Finally prevented shaman from giving totem to same player twice in a row; Added Guardian Angel role; Added GA to gamemodes
+
 10/26/2017 - I'm alive!!!; Fixed a bug where game loop would break if there were no retribution targets; Fixed augur being affected by deceit totem; Fixed wolf cub being the only wolf that could kill in random; Fixed blinding totem not working; Fixed retribution totem not working with multiple wolf kills; Fixed cs lovers being duplicated in the winners list
 
 8/28/2017 - Matchmaker role (thanks to imad!); Fixed some bugs and streamlined cmd_choose and end of game stats; Fixed role order with matchmaker; Replaced shaman in orgy gamemode with matchmaker; Added valentines gamemode; Fixed a bug where matchmaker would be automatically forced to end night
