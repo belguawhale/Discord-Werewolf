@@ -709,6 +709,7 @@ async def _send_role_info(player, sendrole=True):
                             living_players_string.append("{} ({}){}".format(get_name(plr), plr,
                             ' ({})'.format(' '.join(role_string)) if role_string else ''))
                     if role in ['shaman', 'wolf shaman']:
+                        totem = ''
                         if session[1][player][2] in totems:
                             totem = session[1][player][2]
                         elif [x for x in session[1][player][4] if x.startswith("totem:")]:
@@ -971,7 +972,10 @@ async def cmd_see(message, parameters):
                     elif doom == 'sick':
                         await reply(message, "You have a vision that **{0}** will become incredibly ill tomorrow and unable to do anything.".format(get_name(player)))
                         session[1][player][4].append('sick')
-                    session[1][message.author.id][4].remove('doom:{}'.format(doom))
+                    try:
+                        session[1][message.author.id][4].remove('doom:{}'.format(doom))
+                    except ValueError as e:
+                        await log(2, "```py\n{}\n```".format(traceback.format_exc())) 
                     await log(1, "{} ({}) {} DOOM {} ({})".format(get_name(message.author.id), message.author.id, doom,
                         get_name(player), player))
             else:
@@ -1573,8 +1577,10 @@ async def cmd_give(message, parameters):
         await reply(message, "You have already given your totem to **" + get_name(session[1][message.author.id][2]) + "**.")
         return
     elif session[1][message.author.id][1] == 'wolf shaman' and not [x for x in session[1][message.author.id][4] if x.startswith('totem:')]:
-        await reply(message, "You have already given your totem to **" + get_name([x.split(":")[1] for x in session[1][message.author.id][4] if x.startswith('lasttarget:')].pop()) + "**.")
-        return
+        given_to = [x.split(":")[1] for x in session[1][message.author.id][4] if x.startswith('lasttarget:')]
+        if given_to:
+            await reply(message, "You have already given your totem to **{}**.".format(get_name(given_to[0]))) 
+            return
     if "silence_totem2" in session[1][message.author.id][4]:
         await reply(message, "You have been silenced, and are unable to use any special powers.")
         return
@@ -3783,8 +3789,8 @@ async def game_loop(ses=None):
                 if visited != succubus:
                     if visited in wolf_killed and not ('protection_totem' in session[1][visited][4] or 'blessed' in session[1][visited][4] or succubus in guarded):
                         killed_dict[succubus] += 1
-                        killed_msg += "**{}**, a **succubus**, made the unfortunate mistake of visiting the victim's house last night and is now dead.\n".format(get_name(harlot))
-                        wolf_deaths.append(harlot)
+                        killed_msg += "**{}**, a **succubus**, made the unfortunate mistake of visiting the victim's house last night and is now dead.\n".format(get_name(succubus))
+                        wolf_deaths.append(succubus)
             for disobeyer in [x for x in alive_players if 'disobey' in session[1][x][4]]:
                 if random.random() < 0.5:
                     killed_dict[disobeyer] += 100 # this is what happens to bad bois
@@ -4245,7 +4251,8 @@ async def game_loop(ses=None):
 
                                 await end_game(win_msg, [lynched_player] + (lovers if session[6] == "random" else []) + [x for x in session[1] if get_role(x, "role") == "jester" and "lynched" in session[1][x][4]])
                                 return
-                                await send_lobby(lynched_msg)
+                    await send_lobby(lynched_msg)
+                    await player_deaths(lynch_deaths)
                 elif lynched_players == None and win_condition() == None and session[0]:
                     await send_lobby("Not enough votes were cast to lynch a player.")
             # BETWEEN DAY AND NIGHT
