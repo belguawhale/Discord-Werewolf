@@ -4183,11 +4183,11 @@ async def game_loop(ses=None):
                     for player in [x for x in session[1]]:
                         totem_dict[player] = session[1][player][4].count('impatience_totem') - session[1][player][4].count('pacifism_totem')
                     vote_dict = get_votes(totem_dict)
-                    if vote_dict['abstain'] >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) / 2:
-                        lynched_players = 'abstain'
                     max_votes = max([vote_dict[x] for x in vote_dict])
                     max_voted = []
-                    if max_votes >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) // 2 + 1 or not [x for x in session[1] if not session[1][x][2] and session[1][x][0]]:
+                    if vote_dict['abstain'] >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) / 2:
+                        lynched_players = 'abstain'
+                    elif max_votes >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) // 2 + 1 or not [x for x in session[1] if not session[1][x][2] and session[1][x][0]]:
                         for voted in vote_dict:
                             if vote_dict[voted] == max_votes:
                                 lynched_players.append(voted)
