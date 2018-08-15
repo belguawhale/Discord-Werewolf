@@ -3494,7 +3494,10 @@ async def game_loop(ses=None):
                               'roles' if session[6].startswith('roles') else session[6], len(session[1]),
                               client.get_server(WEREWOLF_SERVER).get_member(OWNER_ID).name))
         globals()['session'] = ses
-    await log(1, "Game object: ```py\n{}\n```".format(session))
+    try:
+        await log(1, "Game object: ```py\n{}\n```".format(session))
+    except:
+        pass
     night = 1
     # GAME START
     while win_condition() == None and session[0]:
