@@ -413,7 +413,7 @@ async def cmd_fleave(message, parameters):
             else:
                 leave_msg += "**" + get_name(member) + "** was forced to leave the game.\n"
     if not session[0]:
-        leave_msg += "New player count: **{}**".format(len(session[1]))
+        leave_msg += "New player count: **{}**".format((len(session[1])) - 1)
         if len(session[1]) == 0:
             await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
     await send_lobby(leave_msg)
@@ -1174,7 +1174,7 @@ async def cmd_choose(message, parameters):
 @cmd('kill', [2, 0], "```\n{0}kill <player>\n\nIf you are a wolf, casts your vote to target <player>. If you are a "
                      "hunter or a vengeful ghost, <player> will die the following night.```")
 async def cmd_kill(message, parameters):
-    if not session[0] or message.author.id not in session[1] or get_role(message.author.id, 'role') not in COMMANDS_FOR_ROLE['kill'] or not (session[1][message.author.id][0] or (get_role(message.author.id, 'role') != 'vengeful ghost' or not [x for x in session[1][message.author.id][4] if x.startswith("vengeance:")])):
+    if not session[0] or message.author.id not in session[1] or get_role(message.author.id, 'role') not in COMMANDS_FOR_ROLE['kill'] or (session[1][message.author.id][0] or (get_role(message.author.id, 'role') != 'vengeful ghost' or not [x for x in session[1][message.author.id][4] if x.startswith("vengeance:")])):
         return
     if session[2]:
         await reply(message, "You may only kill someone during the night.")
@@ -1433,6 +1433,8 @@ async def cmd_retract(message, parameters):
             await log(1, "{0} ({1}) RETRACT VOTE".format(get_name(message.author.id), message.author.id))
         else:
             if session[1][message.author.id][1] in COMMANDS_FOR_ROLE['kill']:
+                if session[1][message.author.id][1] is 'hunter' or 'vengeful ghost':
+                    return
                 if not message.channel.is_private:
                     try:
                         await client.send_message(message.author, "Please use retract in pm.")
@@ -1774,6 +1776,9 @@ async def cmd_entrance(message, parameters):
         return
     if session[1][message.author.id][2]:
         await reply(message, "You are already entrancing **{}** tonight.".format(get_name(session[1][message.author.id][2])))
+    if "silence_totem2" in session[1][message.author.id][4]:
+        await reply(message, "You have been silenced, and are unable to use any special powers.")
+        return
     else:
         if parameters == "":
             await reply(message, roles[session[1][message.author.id][1]][2])
@@ -1782,6 +1787,8 @@ async def cmd_entrance(message, parameters):
             if player:
                 if player == message.author.id:
                     await reply(message, "You may not entrance yourself. Use `pass` to not entrance anyone tonight.")
+                if get_role(player, 'role') == 'succubus':
+                    await reply(message, "You cannot entrance another succubus.")
                 elif not session[1][player][0]:
                     await reply(message, "Player **" + get_name(player) + "** is dead!")
                 else:
@@ -1845,6 +1852,9 @@ async def cmd_visit(message, parameters):
         return
     if session[1][message.author.id][2]:
         await reply(message, "You are already spending the night with **{}**.".format(get_name(session[1][message.author.id][2])))
+    if "silence_totem2" in session[1][message.author.id][4]:
+        await reply(message, "You have been silenced, and are unable to use any special powers.")
+        return
     else:
         if parameters == "":
             await reply(message, roles[session[1][message.author.id][1]][2])
@@ -4173,11 +4183,11 @@ async def game_loop(ses=None):
                     for player in [x for x in session[1]]:
                         totem_dict[player] = session[1][player][4].count('impatience_totem') - session[1][player][4].count('pacifism_totem')
                     vote_dict = get_votes(totem_dict)
-                    if vote_dict['abstain'] >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) / 2:
-                        lynched_players = 'abstain'
                     max_votes = max([vote_dict[x] for x in vote_dict])
                     max_voted = []
-                    if max_votes >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) // 2 + 1 or not [x for x in session[1] if not session[1][x][2] and session[1][x][0]]:
+                    if vote_dict['abstain'] >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) / 2:
+                        lynched_players = 'abstain'
+                    elif max_votes >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) // 2 + 1 or not [x for x in session[1] if not session[1][x][2] and session[1][x][0]]:
                         for voted in vote_dict:
                             if vote_dict[voted] == max_votes:
                                 lynched_players.append(voted)
