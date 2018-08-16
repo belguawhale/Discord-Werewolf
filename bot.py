@@ -1174,7 +1174,8 @@ async def cmd_choose(message, parameters):
 @cmd('kill', [2, 0], "```\n{0}kill <player>\n\nIf you are a wolf, casts your vote to target <player>. If you are a "
                      "hunter or a vengeful ghost, <player> will die the following night.```")
 async def cmd_kill(message, parameters):
-    if not session[0] or message.author.id not in session[1] or get_role(message.author.id, 'role') not in COMMANDS_FOR_ROLE['kill'] or (session[1][message.author.id][0] or (get_role(message.author.id, 'role') != 'vengeful ghost' or not [x for x in session[1][message.author.id][4] if x.startswith("vengeance:")])):
+    if not session[0] or message.author.id not in session[1] or get_role(message.author.id, 'role') not in COMMANDS_FOR_ROLE['kill'] or \
+    not (session[1][message.author.id][0] or (get_role(message.author.id, 'role') != 'vengeful ghost' or not [x for x in session[1][message.author.id][4] if x.startswith("vengeance:")])):
         return
     if session[2]:
         await reply(message, "You may only kill someone during the night.")
@@ -3494,10 +3495,7 @@ async def game_loop(ses=None):
                               'roles' if session[6].startswith('roles') else session[6], len(session[1]),
                               client.get_server(WEREWOLF_SERVER).get_member(OWNER_ID).name))
         globals()['session'] = ses
-    try:
-        await log(1, "Game object: ```py\n{}\n```".format(session))
-    except:
-        pass
+    await log(1, "Game object: ```py\n{}\n```".format(session))
     night = 1
     # GAME START
     while win_condition() == None and session[0]:

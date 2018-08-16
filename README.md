@@ -12,6 +12,14 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+8/16/2018 - Fixed a game-breaking bug of wolf not being able to kill
+
+8/15/2018 - Thank Poke and imad for fixing mudkip abstain and various other things; Fixed game crashing at high player counts
+
+5/19/2018 - Fixed some bugs such as succubus crashing the game and various miscellaneous stuff
+
+2/14/2018 - Valentines update! Added valentines, mudkip, evilvillage gamemodes; Added jester, minion, doomsayer, wolf shaman, priest, amnesiac, vengeful ghost, succubus, monster roles; Added assassin, blessed, sharpshooter, mayor templates; Added misdirection, silence, luck, pestilence, desparation totems; Added Guardian Angel to Random and Template gamemodes; Added Wolf cub lobby message for when it grows up; Added more in-depth role and totem explanations.; Upped player count from 20 to 23 for the Default gamemode and up to 24 for the Foolish gamemode; Thanks to imad and Pyro!
+
 11/25/2017 - Anniversary update! Reduced wait on join to 15 seconds; Finally prevented shaman from giving totem to same player twice in a row; Added Guardian Angel role; Added GA to gamemodes
 
 10/26/2017 - I'm alive!!!; Fixed a bug where game loop would break if there were no retribution targets; Fixed augur being affected by deceit totem; Fixed wolf cub being the only wolf that could kill in random; Fixed blinding totem not working; Fixed retribution totem not working with multiple wolf kills; Fixed cs lovers being duplicated in the winners list
