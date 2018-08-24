@@ -1964,7 +1964,8 @@ async def cmd_charm(message, parameters):
                     redirected_targets.append(player)
             if len(valid_targets) == 2:
                 await reply(message, "You have charmed **{}** and **{}**.".format(*map(get_name, redirected_targets)))
-                for piper in [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'piper']:
+                await log(1, "{} ({}) CHARM {} ({}) AND {} ({})".format(get_name(message.author.id), message.author.id, get_name(redirected_targets[0]), redirected_targets[0], get_name(redirected_targets[1]), redirected_targets[1]))
+                for piper in [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'piper' and x != message.author.id]:
                     member = client.get_server(WEREWOLF_SERVER).get_member(piper)
                     if member:
                         try:
@@ -1973,6 +1974,7 @@ async def cmd_charm(message, parameters):
                             pass
             elif len(valid_targets) == 1:
                 await reply(message, "You have charmed **{}**.".format(*map(get_name, redirected_targets)))
+                await log(1, "{} ({}) CHARM {} ({})".format(get_name(message.author.id), message.author.id, get_name(redirected_targets[0]), redirected_targets[0]))
                 for piper in [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'piper' and x != message.author.id]:
                     member = client.get_server(WEREWOLF_SERVER).get_member(piper)
                     if member:
@@ -1983,8 +1985,6 @@ async def cmd_charm(message, parameters):
             session[1][message.author.id][4].remove('charm')
             for charmed in redirected_targets:
                 session[1][charmed][4].append('tocharm')
-                await log(1, "{} ({}) CHARM {} ({})".format(get_name(message.author.id), message.author.id,
-                get_name(charmed), charmed))
         else:
             await reply(message, "You must choose two different players.")
 
@@ -3012,7 +3012,7 @@ def win_condition():
         win_lore = "Game over! The succub{} completely enthralled the village, making them officers in an ever-growing army set on spreading their control and influence throughout the entire world.".format('i' if len([x for x in session[1] if get_role(x, 'role') == 'succubus']) > 1 else 'us')
     elif len([x for x in session[1] if session[1][x][0] and (get_role(x, 'role') == 'piper' or 'charmed' in session[1][x][4])]) == len([x for x in session[1] if session[1][x][0]]):
         win_team = 'pipers'
-        win_lore = "Game over! Everyone has fallen victim to the charms of the piper{0}. The piper{0} lead{1} the villagers away from the village, never to return...".format('' if len([x for x in session[1] if get_role(x, 'role') == 'piper']) < 1 else 's', 's' if len([x for x in session[1] if get_role(x, 'role') == 'piper']) < 1 else '')
+        win_lore = "Game over! Everyone has fallen victim to the charms of the piper{0}. The piper{0} lead{1} the villagers away from the village, never to return...".format('' if len([x for x in session[1] if get_role(x, 'role') == 'piper']) < 2 else 's', 's' if len([x for x in session[1] if get_role(x, 'role') == 'piper']) < 2 else '')
     elif teams['village'] + teams['neutral'] <= teams['wolf'] and not (session[6] == 'evilvillage' and teams['village']):
         if session[6] == 'evilvillage':
             if not teams['village']:
