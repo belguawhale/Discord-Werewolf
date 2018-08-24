@@ -601,7 +601,10 @@ async def cmd_role(message, parameters):
             if params[1] == 'table':
                 # generate role table
                 WIDTH = 20
-                role_dict = gamemodes[gamemode]['roles']
+                role_dict = dict()
+                for role in gamemodes[gamemode]['roles']:
+                    if max(gamemodes[gamemode]['roles'][role]):
+                        role_dict.update({role : gamemodes[gamemode]['roles'][role]})
                 role_guide = "Role table for gamemode **{}**:\n".format(gamemode)
                 role_guide += "```\n" + " " * (WIDTH + 2)
                 role_guide += ','.join("{}{}".format(' ' * (2 - len(str(x))), x) for x in range(gamemodes[gamemode]['min_players'], gamemodes[gamemode]['max_players'] + 1)) + '\n'
@@ -651,7 +654,10 @@ async def cmd_role(message, parameters):
                 role_guide = "Please choose one of the following: " + ', '.join(['guide', 'table'])
         else:
             role_guide = "Please choose one of the following for the third parameter: {}".format(', '.join(['guide', 'table']))
-        await reply(message, role_guide)
+        if not len(role_guide)>2000:
+            await reply(message, role_guide)
+        else:
+            pass # temporary until a solution is found
     else:
         num_players = int(num_players)
         if num_players in range(gamemodes[gamemode]['min_players'], gamemodes[gamemode]['max_players'] + 1):
@@ -796,8 +802,8 @@ async def cmd_stats(message, parameters):
             # [min, max] for traitor and similar roles
         for player in session[1]:
             # Get maximum numbers for all roles
-            role_dict[get_role(player, 'role')][0] += 1
-            role_dict[get_role(player, 'role')][1] += 1
+            role_dict[get_role(player, 'role') if not [x for x in session[1][player][4] if x.startswith('turned:')] else [x for x in session[1][player][4] if x.startswith('turned:')].pop().split(':')[1]][0] += 1
+            role_dict[get_role(player, 'role') if not [x for x in session[1][player][4] if x.startswith('turned:')] else [x for x in session[1][player][4] if x.startswith('turned:')].pop().split(':')[1]][1] += 1
             if get_role(player, 'role') in ['villager', 'traitor']:
                 traitorvill += 1
 
@@ -975,7 +981,7 @@ async def cmd_see(message, parameters):
                     try:
                         session[1][message.author.id][4].remove('doom:{}'.format(doom))
                     except ValueError as e:
-                        await log(2, "```py\n{}\n```".format(traceback.format_exc())) 
+                        await log(2, "```py\n{}\n```".format(traceback.format_exc()))
                     await log(1, "{} ({}) {} DOOM {} ({})".format(get_name(message.author.id), message.author.id, doom,
                         get_name(player), player))
             else:
@@ -1582,7 +1588,7 @@ async def cmd_give(message, parameters):
     elif session[1][message.author.id][1] == 'wolf shaman' and not [x for x in session[1][message.author.id][4] if x.startswith('totem:')]:
         given_to = [x.split(":")[1] for x in session[1][message.author.id][4] if x.startswith('lasttarget:')]
         if given_to:
-            await reply(message, "You have already given your totem to **{}**.".format(get_name(given_to[0]))) 
+            await reply(message, "You have already given your totem to **{}**.".format(get_name(given_to[0])))
             return
     if "silence_totem2" in session[1][message.author.id][4]:
         await reply(message, "You have been silenced, and are unable to use any special powers.")
@@ -1596,6 +1602,9 @@ async def cmd_give(message, parameters):
                 if not session[1][player][0]:
                     await reply(message, "Player **" + get_name(player) + "** is dead!")
                 else:
+                    if 'lasttarget:{}'.format(player) in session[1][message.author.id][4]:
+                        await reply(message, "You gave your totem to **{}** last time, you must choose someone else.".format(get_name(player)))
+                        return
                     if session[1][message.author.id][1] in ["shaman", "crazed shaman"]:
                         totem = session[1][message.author.id][2]
                     else:
@@ -1613,6 +1622,7 @@ async def cmd_give(message, parameters):
                             await reply(message, "You may not give a succubus.")
                             return
                         session[1][message.author.id][2] = player
+                        session[1][message.author.id][4] = [x for x in session[1][message.author.id][4] if not x.startswith('lasttarget:')] + ['lasttarget:{}'.format(player)]
                     await reply(message, "You have given your totem to **" + get_name(player) + "**.")
                     if session[1][message.author.id][1] == 'wolf shaman':
                         await wolfchat("**{0}** has given a totem to **{1}**.".format(get_name(message.author.id), get_name(player)))
@@ -1777,6 +1787,7 @@ async def cmd_entrance(message, parameters):
         return
     if session[1][message.author.id][2]:
         await reply(message, "You are already entrancing **{}** tonight.".format(get_name(session[1][message.author.id][2])))
+        return
     if "silence_totem2" in session[1][message.author.id][4]:
         await reply(message, "You have been silenced, and are unable to use any special powers.")
         return
@@ -2695,7 +2706,7 @@ async def assign_roles(gamemode):
         elif role == 'matchmaker':
             session[1][player][4].append('match')
         elif role == 'amnesiac':
-            session[1][player][4].append('role:{}'.format(random.choice(list(set(roles) - set(["minion", "matchmaker", "villager", "cultist"] + TEMPLATES_ORDERED)))))
+            session[1][player][4].append('role:{}'.format(random.choice(list(set(roles) - set(["minion", "matchmaker", "villager", "cultist", "amnesiac"] + TEMPLATES_ORDERED)))))
         elif role == 'priest':
             session[1][player][4].append('bless')
 
@@ -2771,7 +2782,7 @@ async def end_game(reason, winners=None):
           \n{}\n\n".format('> <@'.join(sort_players(session[1])), session[4][0].seconds // 60, session[4][0].seconds % 60,
           session[4][1].seconds // 60, session[4][1].seconds % 60, (session[4][0].seconds + session[4][1].seconds) // 60,
           (session[4][0].seconds + session[4][1].seconds) % 60, reason)
-    if winners:
+    if winners or session[6] == 'crazy':
         for player in session[1]:
             # ALTERNATE WIN CONDITIONS
             if session[1][player][0] and get_role(player, 'role') == 'crazed shaman':
@@ -2907,7 +2918,7 @@ def win_condition():
             winners.append
         if get_role(player, 'role') == 'vengeful ghost' and not session[1][player][0] and [x.split(':')[1] for x in session[1][player][4] if x.startswith("vengeance:")] and [x.split(':')[1] for x in session[1][player][4] if x.startswith("vengeance:")].pop() != win_team:
             winners.append(player)
-        if get_role(player, 'role') == 'amnesiac' or (get_role(player, 'role') == 'vengeful ghost' and session[1][player][0]) and win_team == 'village' and 'entranced' not in session[1][player][4]:
+        if (get_role(player, 'role') == 'amnesiac' or (get_role(player, 'role') == 'vengeful ghost' and session[1][player][0])) and win_team == 'village' and 'entranced' not in session[1][player][4]:
             winners.append(player)
         if get_role(player, 'role') == 'jester' and 'lynched' in session[1][player][4]:
             winners.append(player)
@@ -3342,7 +3353,7 @@ async def player_deaths(players_dict): # players_dict = {dead : (reason, kill_te
                                     await client.send_message(member, "You are no longer entranced. **Your win conditions have reset to normal.**")
                                 except discord.Forbidden:
                                     pass
-                if get_role(player, 'role') == "vengeful ghost" and kill_team != "bot":
+                if get_role(player, 'role') == "vengeful ghost" and (kill_team != "bot" and not reason == 'gunner suicide'):
                     session[1][player][4].append("vengeance:{}".format(kill_team))
                     member = client.get_server(WEREWOLF_SERVER).get_member(player)
                     if member:
@@ -3544,7 +3555,7 @@ async def game_loop(ses=None):
                     if session[1][player][0]:
                         if role in ['wolf', 'werecrow', 'doomsayer', 'werekitten', 'wolf shaman', 'sorcerer',
                                     'seer', 'oracle', 'harlot', 'hunter', 'augur',
-                                    'guardian angel', 'succubus', 'hag']:
+                                    'guardian angel', 'succubus', 'hag'] and 'silence_totem2' not in session[1][player][4]:
                             end_night = end_night and (session[1][player][2] != '')
                         if role in ['shaman', 'crazed shaman']:
                             end_night = end_night and (session[1][player][2] in session[1])
@@ -4052,6 +4063,7 @@ async def game_loop(ses=None):
                 await player_deaths(killed_dict)
 
             for player in wolf_turn:
+                session[1][player][4].append('turned:{}'.format(get_role(player, 'role')))
                 session[1][player][1] = 'wolf'
 
             for player in session[1]:
@@ -4080,6 +4092,8 @@ async def game_loop(ses=None):
                                                                 "you should just rest during the day...")
                         except discord.Forbidden:
                             pass
+                if get_role(player, 'role') == 'doomsayer':
+                    session[1][player][4] = [x for x in session[1][player][4] if not x.startswith('doom:')]
             if session[6] != 'mudkip':
                 lynched_player = None
                 warn = False
