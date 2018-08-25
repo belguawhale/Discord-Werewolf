@@ -3962,7 +3962,7 @@ async def game_loop(ses=None):
 
             # Harlot stuff
             for harlot in [x for x in alive_players if get_role(x, 'role') == 'harlot']:
-                target = session[1][harlot][2]
+                visited = session[1][harlot][2]
                 if visited != harlot:
                     if visited in wolf_killed and not ('protection_totem' in session[1][visited][4] or 'blessed' in session[1][visited][4] or harlot in guarded):
                         killed_dict[harlot] += 1
@@ -3996,40 +3996,6 @@ async def game_loop(ses=None):
                 target = [a.split(':')[1] for a in session[1][doomsayer][4] if a.startswith('doomdeath:')].pop()
                 killed_dict[target] += 1
                 session[1][doomsayer][4] = [a for a in session[1][doomsayer][4] if not a.startswith('doomdeath:')]
-
-            # Piper stuff
-            charmed = [x for x in alive_players if 'charmed' in session[1][x][4]]
-            tocharm = [x for x in alive_players if 'tocharm' in session[1][x][4]]
-            for player in tocharm:
-                charmed_total = [x for x in charmed + tocharm if x != player]
-                session[1][player][4].remove('tocharm')
-                session[1][player][4].append('charmed')
-                piper_message = "You hear the sweet tones of a flute coming from outside your window... You inexorably walk outside and find yourself in the village square. "
-                if len(charmed_total) > 2:
-                    piper_message += "You find out that **{0}**, and **{1}** are also charmed!".format('**, **'.join(map(get_name, charmed_total[:-1])), get_name(charmed_total[-1]))
-                elif len(charmed_total) == 2:
-                    piper_message += "You find out that **{0}** and **{1}** are also charmed!".format(get_name(charmed_total[0]), get_name(charmed_total[1]))
-                elif len(charmed_total) == 1:
-                    piper_message += "You find out that **{}** is also charmed!".format(get_name(charmed_total[0]))
-                try:
-                    member = client.get_server(WEREWOLF_SERVER).get_member(player)
-                    if member:
-                        await client.send_message(member,piper_message)
-                except discord.Forbidden:
-                    pass
-            for player in charmed:
-                if len(tocharm) > 2:
-                    piper_message = "**{0}**, and **{1}** are now charmed!".format('**, **'.join(map(get_name, tocharm[:-1])), get_name(tocharm[-1]))
-                elif len(tocharm) == 2:
-                    piper_message = "**{0}** and **{1}** are now charmed!".format(get_name(tocharm[0]), get_name(tocharm[1]))
-                elif len(tocharm) == 1:
-                    piper_message = "**{}** is now charmed!".format(get_name(tocharm[0]))
-                try:
-                    member = client.get_server(WEREWOLF_SERVER).get_member(player)
-                    if member:
-                        await client.send_message(member,piper_message)
-                except discord.Forbidden:
-                    pass
 
             # Hunter stuff
             for hunter in [x for x in session[1] if get_role(x, 'role') == 'hunter']:
@@ -4265,6 +4231,14 @@ async def game_loop(ses=None):
             if session[0] and win_condition() == None:
                 await send_lobby("Night lasted **{0:02d}:{1:02d}**. The villagers wake up and search the village.\n\n{2}".format(
                                                                                         night_elapsed.seconds // 60, night_elapsed.seconds % 60, killed_msg))
+
+            killed_dict = {}
+            for player in killed_temp:
+                kill_team = "wolf" if player not in gunner_revenge + list(revengekill) + death_totemed and player in wolf_deaths else "village"
+                killed_dict[player] = ("night kill", kill_team)
+            if killed_dict:
+                await player_deaths(killed_dict)
+
             if session[0] and win_condition() == None:
                 totem_holders = sort_players(totem_holders)
                 if len(totem_holders) == 0:
@@ -4276,13 +4250,6 @@ async def game_loop(ses=None):
                 else:
                     await send_lobby(random.choice(lang['hastotems']).format('**, **'.join([get_name(x) for x in totem_holders[:-1]]), get_name(totem_holders[-1])))
 
-            killed_dict = {}
-            for player in killed_temp:
-                kill_team = "wolf" if player not in gunner_revenge + list(revengekill) + death_totemed and player in wolf_deaths else "village"
-                killed_dict[player] = ("night kill", kill_team)
-            if killed_dict:
-                await player_deaths(killed_dict)
-
             for player in wolf_turn:
                 session[1][player][4].append('turned:{}'.format(get_role(player, 'role')))
                 session[1][player][1] = 'wolf'
@@ -4290,13 +4257,47 @@ async def game_loop(ses=None):
             for player in session[1]:
                 session[1][player][2] = ''
 
+            charmed = sort_players([x for x in alive_players if 'charmed' in session[1][x][4]])
+            tocharm = sort_players([x for x in alive_players if 'tocharm' in session[1][x][4]])
+            for player in tocharm:
+                charmed_total = [x for x in charmed + tocharm if x != player]
+                session[1][player][4].remove('tocharm')
+                session[1][player][4].append('charmed')
+                piper_message = "You hear the sweet tones of a flute coming from outside your window... You inexorably walk outside and find yourself in the village square. "
+                if len(charmed_total) > 2:
+                    piper_message += "You find out that **{0}**, and **{1}** are also charmed!".format('**, **'.join(map(get_name, charmed_total[:-1])), get_name(charmed_total[-1]))
+                elif len(charmed_total) == 2:
+                    piper_message += "You find out that **{0}** and **{1}** are also charmed!".format(get_name(charmed_total[0]), get_name(charmed_total[1]))
+                elif len(charmed_total) == 1:
+                    piper_message += "You find out that **{}** is also charmed!".format(get_name(charmed_total[0]))
+                try:
+                    member = client.get_server(WEREWOLF_SERVER).get_member(player)
+                    if member and piper_message:
+                        await client.send_message(member,piper_message)
+                except discord.Forbidden:
+                    pass
+            for player in charmed:
+                piper_message = ''
+                if len(tocharm) > 2:
+                    piper_message = "**{0}**, and **{1}** are now charmed!".format('**, **'.join(map(get_name, tocharm[:-1])), get_name(tocharm[-1]))
+                elif len(tocharm) == 2:
+                    piper_message = "**{0}** and **{1}** are now charmed!".format(get_name(tocharm[0]), get_name(tocharm[1]))
+                elif len(tocharm) == 1:
+                    piper_message = "**{}** is now charmed!".format(get_name(tocharm[0]))
+                try:
+                    member = client.get_server(WEREWOLF_SERVER).get_member(player)
+                    if member and piper_message:
+                        await client.send_message(member,piper_message)
+                except discord.Forbidden:
+                    pass
+
             if session[0] and win_condition() == None:
                 await check_traitor()
         else: # DAY
             session[3][1] = datetime.now()
             if session[0] and win_condition() == None:
                 for player in session[1]:
-                    session[1][player][4] = [x for x in session[1][player][4] if x not in ["guarded", "protection_totem2"] or x.startswith('bodyguard:')]
+                    session[1][player][4] = [x for x in session[1][player][4] if x not in ["guarded", "protection_totem2"] and not x.startswith('bodyguard:')]
                 await send_lobby("It is now **daytime**. Use `{}lynch <player>` to vote to lynch <player>.".format(BOT_PREFIX))
 
             for player in session[1]:
@@ -5107,39 +5108,40 @@ gamemodes = {
         'min_players' : 6,
         'max_players' : 24,
          'roles' : {
-             #6, 7, 8, 9, 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24
             "seer" :
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "harlot" :
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "shaman" :
-            [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "detective" :
-            [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "bodyguard" :
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2],
             "wolf" :
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3],
+            [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3],
             "traitor" :
-            [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "werekitten" :
-            [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "warlock" :
-            [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "sorcerer" :
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
             "piper" :
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "vengeful ghost" :
-            [0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "cursed villager" :
-            [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "gunner" :
-            [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
             "mayor" :
-            [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "assassin" :
-            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            "villager" :
+            [0, 0, 2, 3, 3, 4, 3, 3, 2, 3, 3, 4, 4, 5, 5, 5, 6, 7, 7, 8, 9]
         }
     }
 }
