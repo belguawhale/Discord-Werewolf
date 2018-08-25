@@ -2300,6 +2300,7 @@ async def cmd_shoot(message, parameters):
     msg = ''
     pm = False
     ded = None
+    outcome = ''
     if session[1][message.author.id][4].count('bullet') < 1:
         msg = "You have no more bullets."
         pm = True
@@ -2334,7 +2335,6 @@ async def cmd_shoot(message, parameters):
                     INJURE = GUNNER_INJURE
                 wolf = get_role(message.author.id, 'role') in WOLFCHAT_ROLES
                 session[1][message.author.id][4].remove('bullet')
-                outcome = ''
                 if wolf:
                     if get_role(target, 'role') in WOLFCHAT_ROLES:
                         outcome = 'miss'
@@ -2895,6 +2895,15 @@ async def assign_roles(gamemode):
             else:
                 session[1][pewpew][3].append('sharpshooter')
                 session[1][pewpew][4] += ['bullet'] * int(SHARPSHOOTER_MULTIPLIER * len(session[1]) + 1)
+    gunners = [x for x in session[1] if 'gunner' in session[1][x][3]]
+    for i in range(gamemode_roles['sharpshooter'] if 'sharpshooter' in gamemode_roles else 0):
+        sharpshooter_choices = [x for x in gunners if 'sharpshooter' not in session[1][x][3]]
+        if sharpshooter_choices:
+            pewpew = random.choice(sharpshooter_choices)
+            session[1][pewpew][3].remove('gunner')
+            session[1][pewpew][4] = [x for x in session[1][pewpew][4] if x != 'bullet']
+            session[1][pewpew][3].append('sharpshooter')
+            session[1][pewpew][4] += ['bullet'] * int(SHARPSHOOTER_MULTIPLIER * len(session[1]) + 1)
     for i in range(gamemode_roles['assassin'] if 'assassin' in gamemode_roles else 0):
         if gamemode == 'random':
             assassin_choices = [x for x in session[1] if 'assassin' not in session[1][x][3]]
@@ -5113,7 +5122,7 @@ gamemodes = {
             "harlot" :
             [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "shaman" :
-            [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
             "detective" :
             [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "bodyguard" :
@@ -5138,10 +5147,12 @@ gamemodes = {
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
             "mayor" :
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            "sharpshooter" :
+            [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
             "assassin" :
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             "villager" :
-            [0, 0, 3, 4, 3, 4, 3, 3, 2, 3, 3, 4, 4, 5, 5, 5, 6, 7, 7, 8, 9]
+            [0, 0, 3, 4, 3, 4, 3, 3, 2, 3, 3, 4, 4, 5, 5, 5, 6, 7, 6, 7, 8]
         }
     }
 }
