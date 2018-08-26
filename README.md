@@ -12,6 +12,8 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+8/25/2018 - Charming update - all credits to imad: Fixed succubus unlimited entrance; Fixed amnesiac winning if dead even when villagers lose; Fixed amnesiac turning into an amnesiac; Lycanthropes are now hidden in !stats; Shamans (including wolf shamans and cs) can no longer give totems twice to same person in a row; Fixed doomsayer charging up dooms and basically destroy anyone if patient; vg is no longer guaranteed a win if they die of gun suicide, instead they are guaranteed defeat; !roles default table and other role tables no longer cause errors and just ignore the command if they were to break; vengeful ghost can no longer use the kill command while alive; Added charming gamemode and the warlock, bodyguard, piper roles
+
 8/16/2018 - Fixed a game-breaking bug of wolf not being able to kill
 
 8/15/2018 - Thank Poke and imad for fixing mudkip abstain and various other things; Fixed game crashing at high player counts
