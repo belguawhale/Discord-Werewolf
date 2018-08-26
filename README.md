@@ -12,6 +12,18 @@ You must first create a new bot account at https://discordapp.com/developers/app
 
 ## Changelog
 
+8/25/2018 - Charming update - all credits to imad: Fixed succubus unlimited entrance; Fixed amnesiac winning if dead even when villagers lose; Fixed amnesiac turning into an amnesiac; Lycanthropes are now hidden in !stats; Shamans (including wolf shamans and cs) can no longer give totems twice to same person in a row; Fixed doomsayer charging up dooms and basically destroy anyone if patient; vg is no longer guaranteed a win if they die of gun suicide, instead they are guaranteed defeat; !roles default table and other role tables no longer cause errors and just ignore the command if they were to break; vengeful ghost can no longer use the kill command while alive; Added charming gamemode and the warlock, bodyguard, piper roles
+
+8/16/2018 - Fixed a game-breaking bug of wolf not being able to kill
+
+8/15/2018 - Thank Poke and imad for fixing mudkip abstain and various other things; Fixed game crashing at high player counts
+
+5/19/2018 - Fixed some bugs such as succubus crashing the game and various miscellaneous stuff
+
+2/14/2018 - Valentines update! Added valentines, mudkip, evilvillage gamemodes; Added jester, minion, doomsayer, wolf shaman, priest, amnesiac, vengeful ghost, succubus, monster roles; Added assassin, blessed, sharpshooter, mayor templates; Added misdirection, silence, luck, pestilence, desparation totems; Added Guardian Angel to Random and Template gamemodes; Added Wolf cub lobby message for when it grows up; Added more in-depth role and totem explanations.; Upped player count from 20 to 23 for the Default gamemode and up to 24 for the Foolish gamemode; Thanks to imad and Pyro!
+
+11/25/2017 - Anniversary update! Reduced wait on join to 15 seconds; Finally prevented shaman from giving totem to same player twice in a row; Added Guardian Angel role; Added GA to gamemodes
+
 10/26/2017 - I'm alive!!!; Fixed a bug where game loop would break if there were no retribution targets; Fixed augur being affected by deceit totem; Fixed wolf cub being the only wolf that could kill in random; Fixed blinding totem not working; Fixed retribution totem not working with multiple wolf kills; Fixed cs lovers being duplicated in the winners list
 
 8/28/2017 - Matchmaker role (thanks to imad!); Fixed some bugs and streamlined cmd_choose and end of game stats; Fixed role order with matchmaker; Replaced shaman in orgy gamemode with matchmaker; Added valentines gamemode; Fixed a bug where matchmaker would be automatically forced to end night
