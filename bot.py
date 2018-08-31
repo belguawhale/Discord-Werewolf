@@ -733,10 +733,31 @@ async def _send_role_info(player, sendrole=True):
                             totem = [x.split(':')[1] for x in session[1][player][4] if x.startswith("totem:")].pop()
                         if totem:
                             msg.append("You have the **{}**. {}\n".format(totem.replace('_', ' '), totems[totem]))
-                    if role in ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'werekitten', 'wolf shaman', 'traitor', 'sorcerer', 'seer',
+                    if role in ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'werekitten', 'wolf shaman', 'wolf mystic', 'traitor', 'sorcerer', 'seer',
                                 'oracle', 'shaman', 'harlot', 'hunter', 'augur', 'detective', 'guardian angel',
                                 'crazed shaman', 'succubus', 'hag', 'piper', 'bodyguard', 'warlock']:
                         msg.append("Living players: ```basic\n" + '\n'.join(living_players_string) + '\n```')
+                    #mystic stuff/wolf mystic stuff
+                    if role == 'mystic':
+                        wolfcount = 0
+                        for player in session[1]:
+                            if get_role(player, 'actualteam') == 'wolf' and session[1][player][0]:
+                                wolfcount += 1
+                        try:
+                            if member:
+                                await client.send_message(member, "You sense that there are **{}** wolves.".format(wolfcount))
+                        except discord.Forbidden:
+                            pass
+                    if role == 'wolf mystic':
+                        vilcount = 0
+                        for player in session[1]:
+                            if ((get_role(player, 'actualteam') == 'village' and get_role(player, 'role') != 'villager') or get_role(player, 'role') == ('fool' or 'monster' or 'succubus' or  'piper' or 'demoniac')) and session[1][player][0]:
+                                vilcount += 1
+                        try:
+                            if member:
+                                await client.send_message(member, "You sense that there are **{}** villagers.".format(vilcount))
+                        except discord.Forbidden:
+                            pass
                     if 'gunner' in templates:
                         msg.append("You have a gun and **{}** bullet{}. Use the command "
                                    "`{}role gunner` for more information.".format(
@@ -779,7 +800,7 @@ async def _send_role_info(player, sendrole=True):
                 await client.send_message(member, "Living players: ```basic\n" + '\n'.join(living_players_string) + '\n```')
             except discord.Forbidden:
                 pass
-
+        
 @cmd('myrole', [0, 0], "```\n{0}myrole takes no arguments\n\nTells you your role in pm.```")
 async def cmd_myrole(message, parameters):
     await _send_role_info(message.author.id)
@@ -1455,7 +1476,7 @@ async def cmd_retract(message, parameters):
             await log(1, "{0} ({1}) RETRACT VOTE".format(get_name(message.author.id), message.author.id))
         else:
             if session[1][message.author.id][1] in COMMANDS_FOR_ROLE['kill']:
-                if session[1][message.author.id][1] is 'hunter' or 'vengeful ghost':
+                if get_role(message.author.id, 'actualrole') == ('hunter' or 'vengeful ghost'):
                     return
                 if not message.channel.is_private:
                     try:
@@ -1471,6 +1492,9 @@ async def cmd_retract(message, parameters):
 @cmd('abstain', [0, 2], "```\n{0}abstain takes no arguments\n\nRefrain from voting someone today.```", 'abs', 'nl')
 async def cmd_abstain(message, parameters):
     if not session[0] or not session[2] or not message.author.id in session[1] or not session[1][message.author.id][0]:
+        return
+    if session[6] == 'evilvillage':
+        await send_lobby("The evilvillage cannot abstain.")
         return
     if session[4][1] == timedelta(0):
         await send_lobby("The village may not abstain on the first day.")
@@ -1833,16 +1857,16 @@ async def cmd_entrance(message, parameters):
                         succubus_message = "You have become entranced by **{0}**. From this point on, you must vote along with them or risk dying. You **cannot win with your own team**, but you will win should all alive players become entranced."
                         if role in COMMANDS_FOR_ROLE['kill'] and message.author.id in session[1][player][2]:
                             session[1][player][2] = ''
-                            succubus_message += "You discover that **{0}** is a succubus and have retracted your kill as a result.\n".format(get_name(message.author.id))
+                            succubus_message += " You discover that **{0}** is a succubus and have retracted your kill as a result.\n".format(get_name(message.author.id))
                         if 'assassin' in templates and 'assassinate:{}'.format(message.author.id) in session[1][player][4]:
                             session[1][player][4].remove('assassinate:{}'.format(message.author.id))
-                            succubus_message += "You discover that **{0}** is a succubus and must now target someone else.\n".format(get_name(message.author.id))
+                            succubus_message += " You discover that **{0}** is a succubus and must now target someone else.\n".format(get_name(message.author.id))
                         if role == 'hag' and session[1][player][2] == message.author.id:
-                            succubus_message += "You discover that **{0}** is a succubus and have retracted your hex as a result.\n".format(get_name(message.author.id))
+                            succubus_message += " You discover that **{0}** is a succubus and have retracted your hex as a result.\n".format(get_name(message.author.id))
                             session[1][player][2] = ''
                             session[1][player][4].remove('lasttarget:{}'.format(message.author.id))
                         if role == 'piper' and ('tocharm' in session[1][message.author.id][4] or 'charmed' in session[1][message.author.id][4]):
-                            succubus_message += "You discover that **{0}** is a succubus and have retracted your charm as a result.\n".format(get_name(message.author.id))
+                            succubus_message += " You discover that **{0}** is a succubus and have retracted your charm as a result.\n".format(get_name(message.author.id))
                             session[1][message.author.id][4] = [x for x in session[1][message.author.id][4] if x not in ['charmed', 'tocharm']]
                             session[1][player][4].append('charm')
                         if role in COMMANDS_FOR_ROLE['give']:
@@ -1852,7 +1876,7 @@ async def cmd_entrance(message, parameters):
                             elif message.author.id == session[1][player][2]:
                                 totem = [x.split(':')[1] for x in session[1][player][4] if x.startswith('given:')].pop()
                             if totem not in ["protection_totem", "revealing_totem", "desperation_totem", "influence_totem", "luck_totem", "pestilence_totem", "retribution_totem", '']:
-                                succubus_message += "You discover that **{0}** is a succubus and have retracted your totem as a result."
+                                succubus_message += " You discover that **{0}** is a succubus and have retracted your totem as a result."
                                 session[1][message.author.id][4].remove(totem)
                                 session[1][player][4].remove('given:{}'.format(totem))
                                 session[1][player][4].remove('lasttarget:{}'.format(message.author.id))
@@ -2385,6 +2409,7 @@ async def cmd_shoot(message, parameters):
 
     if ded:
         await player_deaths({ded : ('gunner ' + outcome, get_role(message.author.id, "actualteam"))})
+        await check_traitor()
     elif outcome == 'injured':
         session[1][target][4].append('injured')
 
@@ -3711,9 +3736,9 @@ async def game_loop(ses=None):
                 if night == 1:
                     await _send_role_info(player)
                 else:
-                    await _send_role_info(player, sendrole=False)
+                    await _send_role_info(player, sendrole=False)        
             await log(1, '\n'.join(log_msg))
-
+            
             session[3][0] = datetime.now()
             await send_lobby("It is now **nighttime**.")
             warn = False
@@ -3726,7 +3751,7 @@ async def game_loop(ses=None):
                     role = get_role(player, 'role')
                     templates = get_role(player, 'templates')
                     if session[1][player][0]:
-                        if role in ['wolf', 'werecrow', 'doomsayer', 'werekitten', 'wolf shaman', 'sorcerer',
+                        if role in ['wolf', 'werecrow', 'doomsayer', 'werekitten', 'wolf shaman', 'wolf mystic', 'sorcerer',
                                     'seer', 'oracle', 'harlot', 'hunter', 'augur',
                                     'guardian angel', 'succubus', 'hag', 'warlock', 'bodyguard'] and 'silence_totem2' not in session[1][player][4]:
                             end_night = end_night and (session[1][player][2] != '')
@@ -4090,9 +4115,9 @@ async def game_loop(ses=None):
                                 ill_wolves.append(p)
                     if session[1][player][4].count('retribution_totem') > 0 and player not in wolf_turn:
                         revenge_targets = [x for x in session[1] if session[1][x][0] and get_role(x, 'role') in [
-                            'wolf', 'doomsayer', 'werecrow', 'werekitten', 'wolf shaman']]
+                            'wolf', 'doomsayer', 'werecrow', 'werekitten', 'wolf shaman', 'wolf mystic']]
                         if get_role(player, 'role') == 'harlot' and get_role(session[1][player][2], 'role') in [
-                            'wolf', 'doomsayer', 'werecrow', 'wolf cub', 'werekitten', 'wolf shaman']:
+                            'wolf', 'doomsayer', 'werecrow', 'wolf cub', 'werekitten', 'wolf shaman', 'wolf mystic']:
                             revenge_targets[:] = [session[1][player][2]]
                         else:
                             revenge_targets[:] = [x for x in revenge_targets if player in session[1][x][2].split(',')]
@@ -4149,9 +4174,9 @@ async def game_loop(ses=None):
                 session[1][player][4].count('bullet') > 0 and killed_dict[player] > 0:
                     if random.random() < GUNNER_REVENGE_WOLF:
                         revenge_targets = [x for x in session[1] if session[1][x][0] and get_role(x, 'role') in [
-                            'wolf', 'doomsayer', 'werecrow', 'werekitten', 'wolf shaman']]
+                            'wolf', 'doomsayer', 'werecrow', 'werekitten', 'wolf shaman', 'wolf mystic']]
                         if get_role(player, 'role') == 'harlot' and get_role(session[1][player][2], 'role') in [
-                            'wolf', 'doomsayer', 'werecrow', 'wolf cub', 'werekitten', 'wolf shaman']:
+                            'wolf', 'doomsayer', 'werecrow', 'wolf cub', 'werekitten', 'wolf shaman', 'wolf mystic']:
                             revenge_targets[:] = [session[1][player][2]]
                         else:
                             revenge_targets[:] = [x for x in revenge_targets if session[1][x][2] in wolf_killed]
@@ -4540,6 +4565,7 @@ async def game_loop(ses=None):
                             pass
             if session[0] and win_condition() == None:
                 await check_traitor()
+            
     # GAME END
     if session[0]:
         win_msg = win_condition()
@@ -4634,7 +4660,7 @@ async def backup_settings_loop():
 
 ############## POST-DECLARATION STUFF ###############
 COMMANDS_FOR_ROLE = {'see' : ['seer', 'oracle', 'augur', 'doomsayer'],
-                     'kill' : ['wolf', 'werecrow', 'werekitten', 'wolf shaman', 'hunter', 'vengeful ghost', 'doomsayer'],
+                     'kill' : ['wolf', 'werecrow', 'werekitten', 'wolf shaman', 'hunter', 'vengeful ghost', 'doomsayer', 'wolf mystic'],
                      'give' : ['shaman', 'wolf shaman'],
                      'visit' : ['harlot', 'succubus'],
                      'shoot' : ['gunner', 'sharpshooter'],
@@ -4717,7 +4743,9 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
          'hag' : ['wolf', 'hags', "You can hex someone to prevent them from using any special powers they may have during the next day and night. Use `hex <player>` to hex them. Only detectives can reveal your true identity, seers will see you as a regular villager."],
          'bodyguard' : ['village', 'bodyguards', "It is your job to protect the villagers. If you guard a victim, you will sacrifice yourself to save them. Use `guard <player>` to guard a player or `pass` to not guard anyone tonight."],
          'piper' : ['neutral', 'pipers', "You can select up to two players to charm each night. The charmed players will know each other, but not who charmed them. You win when all other players are charmed. Use `charm <player1> and <player2>` to select the players to charm, or `charm <player>` to charm just one player."],
-         'warlock' : ['wolf', 'warlocks', "Each night you can curse someone with `curse <player>` to turn them into a cursed villager, so the seer sees them as wolf. Act quickly, as your curse applies as soon as you cast it! Only detectives can reveal your true identity, seers will see you as a regular villager."]}
+         'warlock' : ['wolf', 'warlocks', "Each night you can curse someone with `curse <player>` to turn them into a cursed villager, so the seer sees them as wolf. Act quickly, as your curse applies as soon as you cast it! Only detectives can reveal your true identity, seers will see you as a regular villager."],
+         'mystic' : ['village', 'mystics', "Each night you will sense the number of evil villagers there are."],
+         'wolf mystic' : ['wolf', 'wolf mystics', "Each night you will sense the number of good villagers with a power there are. You can also use `kill <player>` to kill a villager."]}
 
 gamemodes = {
     'default' : {
@@ -4972,8 +5000,6 @@ gamemodes = {
             [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1],
             'fool' :
             [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1],
-            'cursed villager' :
-            [0, 0, 0, 0, 1, 1,  1, 1, 1, 1, 1, 1],
             'minion' :
             [0, 0, 0, 0, 0, 0,  1, 1, 1, 1, 1, 1],
             'mayor' :
@@ -5013,69 +5039,6 @@ gamemodes = {
         'max_players' : 20,
         'roles' : {
         }
-    },
-    'template' : {
-        'description' : "This is a template you can use for making your own gamemodes.",
-        'min_players' : 0,
-        'max_players' : 0,
-        'roles' : {
-            #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24
-            'wolf' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'werecrow' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'wolf cub' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'werekitten' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'traitor' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'sorcerer' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'cultist' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'seer' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'oracle' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'shaman' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'harlot' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'hunter' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'augur' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'detective' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'matchmaker' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'guardian angel' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'villager' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'jester' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'fool' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'crazed shaman' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'amnesiac' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'cursed villager' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'gunner' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'assassin' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'minion' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'monster' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'mayor' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-            'hag' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]}
     },
     'mudkip' : {
         'description' : "Why are all the professors named after trees?",
@@ -5117,49 +5080,113 @@ gamemodes = {
         'min_players' : 6,
         'max_players' : 24,
          'roles' : {
-            "seer" :
+            'seer' :
             [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "harlot" :
+            'harlot' :
             [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "shaman" :
+            'shaman' :
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2],
-            "detective" :
+            'detective' :
             [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "bodyguard" :
+            'bodyguard' :
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2],
-            "wolf" :
+            'wolf' :
             [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 3, 3, 3],
-            "traitor" :
+            'traitor' :
             [0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "werekitten" :
+            'werekitten' :
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "warlock" :
+            'warlock' :
             [0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "sorcerer" :
+            'sorcerer' :
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1],
-            "piper" :
+            'piper' :
             [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "vengeful ghost" :
+            'vengeful ghost' :
             [0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "cursed villager" :
+            'cursed villager' :
             [0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "gunner" :
+            'gunner' :
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
-            "mayor" :
+            'mayor' :
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "sharpshooter" :
+            'sharpshooter' :
             [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 2],
-            "assassin" :
+            'assassin' :
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            "villager" :
+            'villager' :
             [0, 0, 3, 4, 3, 4, 3, 3, 2, 3, 3, 4, 4, 5, 5, 5, 6, 7, 6, 7, 8]
+         }
+    },
+    'template' : {
+        'description' : "This is a template you can use for making your own gamemodes.",
+        'min_players' : 0,
+        'max_players' : 0,
+        'roles' : {
+            #4, 5, 6, 7, 8, 9,10,11,12,13,14,15,16,17,18,19,20,21,22,23,24
+            'wolf' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'werecrow' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'wolf cub' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'werekitten' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'traitor' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'sorcerer' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'cultist' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'seer' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'oracle' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'shaman' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'harlot' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'hunter' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'augur' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'detective' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'matchmaker' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'guardian angel' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'villager' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'jester' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'fool' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'crazed shaman' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'amnesiac' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'cursed villager' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'gunner' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'assassin' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'minion' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'monster' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'mayor' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            'hag' :
+            [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         }
     }
 }
 gamemodes['belunga']['roles'] = dict(gamemodes['default']['roles'])
 
-VILLAGE_ROLES_ORDERED = ['seer', 'oracle', 'shaman', 'harlot', 'hunter', 'augur', 'detective', 'matchmaker', 'guardian angel', 'bodyguard', 'priest', 'village drunk', 'villager']
-WOLF_ROLES_ORDERED = ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'werekitten', 'wolf shaman', 'traitor', 'hag', 'sorcerer', 'warlock', 'minion', 'cultist']
+VILLAGE_ROLES_ORDERED = ['seer', 'oracle', 'shaman', 'harlot', 'hunter', 'augur', 'detective', 'matchmaker', 'guardian angel', 'bodyguard', 'priest', 'village drunk', 'mystic', 'villager']
+WOLF_ROLES_ORDERED = ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'werekitten', 'wolf shaman', 'wolf mystic', 'traitor', 'hag', 'sorcerer', 'warlock', 'minion', 'cultist']
 NEUTRAL_ROLES_ORDERED = ['jester', 'crazed shaman', 'monster', 'piper', 'amnesiac', 'fool', 'vengeful ghost', 'succubus']
 TEMPLATES_ORDERED = ['cursed villager', 'blessed villager', 'gunner', 'sharpshooter', 'mayor', 'assassin']
 totems = {'death_totem' : 'The player who is given this totem will die tonight.',
@@ -5188,9 +5215,9 @@ totems = {'death_totem' : 'The player who is given this totem will die tonight.'
 SHAMAN_TOTEMS = ['death_totem', 'protection_totem', 'revealing_totem', 'influence_totem', 'impatience_totem', 'pacifism_totem', 'silence_totem', 'desperation_totem']
 WOLF_SHAMAN_TOTEMS = ['protection_totem', 'impatience_totem', 'pacifism_totem', 'retribution_totem', 'deceit_totem', 'lycanthropy_totem', 'luck_totem', 'misdirection_totem', 'silence_totem']
 ROLES_SEEN_VILLAGER = ['werekitten', 'traitor', 'sorcerer', 'warlock', 'minion', 'cultist', 'villager', 'jester', 'fool', 'amnesiac', 'vengeful ghost', 'hag', 'piper']
-ROLES_SEEN_WOLF = ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'wolf shaman', 'cursed', 'monster', 'succubus']
-ACTUAL_WOLVES = ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'werekitten', 'wolf shaman']
-WOLFCHAT_ROLES = ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'werekitten', 'wolf shaman', 'traitor', 'sorcerer', 'warlock', 'hag']
+ROLES_SEEN_WOLF = ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'wolf shaman', 'wolf mystic', 'cursed', 'monster', 'succubus']
+ACTUAL_WOLVES = ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'werekitten', 'wolf shaman', 'wolf mystic']
+WOLFCHAT_ROLES = ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'werekitten', 'wolf shaman', 'wolf mystic', 'traitor', 'sorcerer', 'warlock', 'hag']
 
 ########### END POST-DECLARATION STUFF #############
 client.loop.create_task(do_rate_limit_loop())
