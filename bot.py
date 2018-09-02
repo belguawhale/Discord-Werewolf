@@ -976,7 +976,7 @@ async def cmd_see(message, parameters):
                         elif role == 'augur':
                             seen_role = get_role(player, 'actualteam')
                             if get_role(player, 'role') == 'amnesiac':
-                                seen_role = roles[[x.split(':')[1].replace("_", " ") for x in session[1][player][4] if x.startswith("role:")].pop()][1]
+                                seen_role = roles[[x.split(':')[1].replace("_", " ") for x in session[1][player][4] if x.startswith("role:")].pop()][0]
                             reply_msg = "exudes a **{}** aura".format(
                                 'red' if seen_role == 'wolf' else 'blue' if seen_role == 'village' else 'grey')
                         await reply(message, "You have a vision... in your vision you see that **{}** {}!".format(
@@ -2392,6 +2392,7 @@ async def cmd_shoot(message, parameters):
                 elif outcome == 'injure':
                     msg += "**{}** is a villager and was injured. Luckily the injury is minor and will heal after a day of rest.".format(
                             get_name(target))
+                    session[1][target][4].append('injured')
                 else:
                     msg += "wtf? (this is an error, please report to an admin)"
 
@@ -2410,8 +2411,6 @@ async def cmd_shoot(message, parameters):
     if ded:
         await player_deaths({ded : ('gunner ' + outcome, get_role(message.author.id, "actualteam"))})
         await check_traitor()
-    elif outcome == 'injured':
-        session[1][target][4].append('injured')
 
 @cmd('target', [2, 0], "```\n{0}target <player>\n\nIf you are an assassin, makes <player> your target during the night.```", 'assassinate')
 async def cmd_target(message, parameters):
@@ -2884,6 +2883,12 @@ async def assign_roles(gamemode):
             session[1][player][4].append('match')
         elif role == 'amnesiac':
             session[1][player][4].append('role:{}'.format(random.choice(list(set(roles) - set(["minion", "matchmaker", "villager", "cultist", "amnesiac"] + TEMPLATES_ORDERED)))))
+            if 'role:hunter' in session[1][player][4]:
+                session[1][player][4].append('hunterbullet')
+            if 'role:priest' in session[1][player][4]:
+                session[1][player][4].append('bless')
+            if 'role:matchmaker' in session[1][player][4]:
+                session[1][player][4].append('match')
         elif role == 'priest':
             session[1][player][4].append('bless')
 
@@ -4558,7 +4563,6 @@ async def game_loop(ses=None):
                         session[1][player][4] = [x for x in session[1][player][4] if not x.startswith("role:")]
                         try:
                             await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player), "Your amnesia clears and you now remember that you are a{0} **{1}**!".format("n" if role.lower()[0] in ['a', 'e', 'i', 'o', 'u'] else "", role))
-                            await _send_role_info(player)
                             if role in WOLFCHAT_ROLES:
                                 await wolfchat("{0} is now a **{1}**!".format(get_name(player), role))
                         except:
