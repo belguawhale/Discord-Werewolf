@@ -1658,7 +1658,7 @@ async def cmd_give(message, parameters):
 
                     else:
                         if 'entranced' in session[1][message.author.id][4] and get_role(player, 'role') == 'succubus' and totem not in ["protection_totem", "revealing_totem", "desperation_totem", "influence_totem", "luck_totem", "pestilence_totem", "retribution_totem"]:
-                            await reply(message, "You may not give a succubus.")
+                            await reply(message, "You may not give a harmful totem to a succubus.")
                             return
                         session[1][message.author.id][2] = player
                         session[1][message.author.id][4] = [x for x in session[1][message.author.id][4] if not x.startswith('lasttarget:')] + ['lasttarget:{}'.format(player)]
