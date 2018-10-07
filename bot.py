@@ -2025,6 +2025,7 @@ async def cmd_visit(message, parameters):
         return
     if session[1][message.author.id][2]:
         await reply(message, "You are already spending the night with **{}**.".format(get_name(session[1][message.author.id][2])))
+        return
     if "silence_totem2" in session[1][message.author.id][4]:
         await reply(message, "You have been silenced, and are unable to use any special powers.")
         return
