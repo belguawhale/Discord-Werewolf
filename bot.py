@@ -4873,7 +4873,7 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
          'mystic' : ['village', 'mystics', "Each night you will sense the number of evil villagers there are."],
          'wolf mystic' : ['wolf', 'wolf mystics', "Each night you will sense the number of good villagers with a power there are. You can also use `kill <player>` to kill a villager."],
          'mad scientist' : ['village', 'mad scientists', "You win with the villagers, and should you die, you will let loose a potent chemical concoction that will kill the players next to you if they are still alive."],
-         'clone' : ['neutral', 'clones', "You can select someone to clone with clone <nick>. If that player dies, you become their role. You may only clone someone during the first night."]}
+         'clone' : ['neutral', 'clones', "You can select someone to clone with `clone <player>`. If that player dies, you become their role. You may only clone someone during the first night."]}
          
 
 gamemodes = {
