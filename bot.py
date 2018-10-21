@@ -3625,6 +3625,45 @@ async def player_deaths(players_dict): # players_dict = {dead : (reason, kill_te
                     if end_voter and end_voter not in players_dict and get_role(player, 'role') != 'fool':
                         await send_lobby("As the noose is being fitted, **{0}**'s totem emits a brilliant flash of light. When the villagers are able to see again, they discover that **{1}**, a{2} **{3}**, has fallen over dead.".format(get_name(player), get_name(end_voter), "n" if get_role(end_voter, "death").lower()[0] in ['a', 'e', 'i', 'o', 'u'] else "", get_role(end_voter, "death")))
                         await player_deaths({end_voter : ("desperation", get_role(player, 'actualteam'))})
+                
+                #clone taking the dead's role
+                for clone in [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == "clone" and "clone:{}".format(player) in session[1][x][4]]:
+                    member = client.get_server(WEREWOLF_SERVER).get_member(clone)
+                    role = get_role(player, 'role')
+                    if role == "amnesiac":
+                        role = [x.split(':')[1].replace("_", " ") for x in session[1][player][4] if x.startswith("role:")].pop()
+                    if role == "priest" and bless in session[1][player][4]:
+                        session[1][clone][4].append("bless")
+                    elif role == "hunter" and "hunterbullet" in session[1][player][4]:
+                        session[1][clone][4].append("hunterbullet")
+                    elif role == "clone":  #this wont work on a clone cloning a clone cloning a clone, only a clone cloning a clone cloning another role
+                        for new_target in [x for x in session[1][player][4] if x.startswith('clone:')]:
+                            session[1][clone][4].append(new_target)
+                            session[1][clone][4].remove("clone:{}".format(player))
+                            target = (new_target.split(':')[1])
+                            if not session[1][target][0]:
+                                role = get_role(target)
+                            else:
+                                role = ""
+                                if member:
+                                    try:
+                                        await client.send_message(member, "Your target was a clone and you are now cloning their target, **{0}**.".format(get_name(target)))
+                                    except discord.Forbidden:
+                                        pass
+                    elif role == "piper"  and "charmed" in session[1][clone][4]:
+                        session[1][clone][4].remove("charmed")
+                    if role:
+                        session[1][clone][1] = role
+                        if member:
+                            try:
+                                await client.send_message(member, "You have cloned your target and are now a **{0}**.".format(role))
+                            except discord.Forbidden:
+                                pass
+                    if role in WOLFCHAT_ROLES:
+                        await wolfchat("{0} is now a **{1}**!".format(get_name(clone), role))
+                    elif role == "minion":
+                       await _send_role_info(clone)
+                       
                 if get_role(player, 'role') ==  'succubus' and not [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'succubus']:
                     if kill_team != 'bot':
                         foul_dict = {}
@@ -4436,20 +4475,23 @@ async def game_loop(ses=None):
                         await client.send_message(member,piper_message)
                 except discord.Forbidden:
                     pass
+            fullcharmed = charmed + tocharm
             for player in charmed:
                 piper_message = ''
-                if len(tocharm) > 2:
-                    piper_message = "**{0}**, and **{1}** are now charmed!".format('**, **'.join(map(get_name, tocharm[:-1])), get_name(tocharm[-1]))
-                elif len(tocharm) == 2:
-                    piper_message = "**{0}** and **{1}** are now charmed!".format(get_name(tocharm[0]), get_name(tocharm[1]))
-                elif len(tocharm) == 1:
-                    piper_message = "**{}** is now charmed!".format(get_name(tocharm[0]))
+                fullcharmed.remove(player)
+                if len(fullcharmed) > 1:
+                    piper_message = "You, **{0}**, and **{1}** are all charmed!".format('**, **'.join(map(get_name, fullcharmed[:-1])), get_name(fullcharmed[-1]))
+                elif len(fullcharmed) == 1:
+                    piper_message = "You and **{0}** are now charmed!".format(get_name(fullcharmed[0]))
+                elif len(fullcharmed) == 0:
+                    piper_message = "You are the only charmed villager."
                 try:
                     member = client.get_server(WEREWOLF_SERVER).get_member(player)
                     if member and piper_message:
                         await client.send_message(member,piper_message)
                 except discord.Forbidden:
                     pass
+                fullcharmed.append(player)
 
             if session[0] and win_condition() == None:
                 await check_traitor()
@@ -4894,7 +4936,7 @@ gamemodes = {
             'sorcerer' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
             'cultist' :
-            [0, 0, 0, 1, 0, 0,  0, 0, 0, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+            [0, 0, 0, 1, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
             'seer' :
             [1, 1, 1, 1, 1, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'shaman' :
@@ -4906,15 +4948,15 @@ gamemodes = {
             'augur' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1],
             'detective' :
-            [0, 0, 0, 0, 0, 0,  0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'matchmaker' :
             [0, 0, 0, 0, 0, 0,  0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-            'guardian angel' :
+            'bodyguard' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1],
             'villager' :
             [2, 3, 4, 3, 3, 3,  3, 3, 2, 2, 3, 3, 2, 3, 3, 4, 3, 3, 4, 4, 4],
             'crazed shaman' :
-            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+            [0, 0, 0, 0, 0, 1,  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
             'amnesiac' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 1],
             'cursed villager' :
@@ -5104,6 +5146,8 @@ gamemodes = {
             [0, 0, 0, 0, 2, 2,  2, 2, 2, 3, 3, 3, 3, 4, 4, 4, 4],
             'matchmaker' :
             [0, 0, 0, 0, 6, 7,  8, 9, 9, 9,10,11,12,12,12,13,14],
+            'mad scientist' :
+            [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
             'crazed shaman' :
             [0, 0, 0, 0, 0, 0,  0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1],
             'monster' :
