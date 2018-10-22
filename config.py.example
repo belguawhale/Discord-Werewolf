@@ -1,22 +1,23 @@
-OWNER_ID = 'owner id (owner has all perms)'
 BOT_PREFIX = '!'
 TOKEN = 'bot token goes here'
-GAME_CHANNEL = 'lobby channel id'
-DEBUG_CHANNEL = 'debug channel id (for all your errors and debug stuff)'
-WEREWOLF_SERVER = 'id of server the bot is running on'
-PLAYERS_ROLE_NAME = 'Players'
-ADMINS_ROLE_NAME = 'Admins'
-WEREWOLF_NOTIFY_ROLE_NAME = 'Werewolf Notify'
-ADMINS = ['admin id', 'admin 2 id', 'etc.']
-IGNORE_LIST = []
-TOKENS_GIVEN = 5
-TOKEN_RESET = 10
-IGNORE_THRESHOLD = 7
-NOTIFY_FILE = 'notify.txt'
-BACKUP_INTERVAL = 300
-MESSAGE_LANGUAGE = 'en'
-LOG_FILE = 'debug.txt'
+GAME_CHANNEL_ID = 1234567890 # replace this. lobby channel id (where all gameplay happens).
+DEBUG_CHANNEL_ID = 1234567890 # replace this. debug channel id (for all your errors and debug stuff). should be different than GAME_CHANNEL_ID.
+WEREWOLF_SERVER_ID = 1234567890 # replace this. id of server the bot is running on
+PLAYERS_ROLE_ID = 1234567890 # replace this. id of 'Players' role in the server
+ADMINS_ROLE_ID = 1234567890 # replace this. id of 'Admins' role in the server
+WEREWOLF_NOTIFY_ROLE_ID = 1234567890 # replace this. id of optional 'Werewolf Notify' role in the server
+ADMINS = [1234567890, 2345678901, ...] # replace this. user ids to grant Werewolf Admin perms to. the bot owner automatically gets all perms.
+IGNORE_LIST = [] # users to ignore
+
+TOKENS_GIVEN = 5 # number of commands allowed...
+TOKEN_RESET = 10 # in this many seconds
+IGNORE_THRESHOLD = 7 # number of commands in ^ seconds before ignoring the user
+NOTIFY_FILE = 'notify.txt' # saving Werewolf Notify users
+BACKUP_INTERVAL = 300 # How often in seconds to backup stasis.json
+MESSAGE_LANGUAGE = 'en' # language (not really working at this stage)
+
+LOG_FILE = 'debug.txt' # file to save debug stuff to
 MIN_LOG_LEVEL = 1
 # 0 to log everything, 1 to log only gameplay-related info, 2 to log only warnings
-STASIS_FILE = 'stasis.json'
-PLAYING_MESSAGE = '{0}info | {0}help | {0}join'.format(BOT_PREFIX)
+STASIS_FILE = 'stasis.json' # file to save stasis information to
+PLAYING_MESSAGE = '{0}info | {0}help | {0}join'.format(BOT_PREFIX) # playing message bot has on startup
