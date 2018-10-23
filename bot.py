@@ -5149,7 +5149,7 @@ gamemodes = {
         # [9] matchmaker(7) [10] matchmaker(8) [11] matchmaker(9) [12] monster [13] wolf(3) [14] matchmaker(10) [15] matchmaker(11)
         # [16] matchmaker(12) [17] wolf(4) [18] mad scientist [19] matchmaker(13) [20] matchmaker(14) [21] wolf(5) [22] matchmaker(15) [23] matchmaker(16) [24] wolf(6)
         'min_players' : 8,
-        'max_players' : 20,
+        'max_players' : 24,
         'roles' : {
             #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16,17,18,19,20,21,22,23,24
             'wolf' :
@@ -5164,7 +5164,7 @@ gamemodes = {
     'evilvillage' : {
         'description' : 'Majority of the village is wolf aligned, safes must secretly try to kill the wolves.',
         'min_players' : 6,
-        'max_players' : 15,
+        'max_players' : 18,
         'roles' : {
             #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16,17,18
             'wolf' :
