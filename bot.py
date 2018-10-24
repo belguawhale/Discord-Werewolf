@@ -565,7 +565,12 @@ async def cmd_deop(message, parameters):
                      "If left blank, displays a list of roles.```", 'roles')
 async def cmd_role(message, parameters):
     if parameters == "" and not session[0] or parameters == 'list':
-        await reply(message, "Roles: " + ", ".join(sort_roles(roles)))
+        roles_message = ''
+        roles_message += "\n**Village Team:** " + ", ".join(sort_roles(VILLAGE_ROLES_ORDERED))
+        roles_message += "\n**Wolf Team:** " + ", ".join(sort_roles(WOLF_ROLES_ORDERED))
+        roles_message += "\n**Neutrals:** " + ", ".join(sort_roles(NEUTRAL_ROLES_ORDERED))
+        roles_message += "\n**Templates:** " + ", ".join(sort_roles(TEMPLATES_ORDERED))
+        await reply(message, roles_message)
         return
     elif parameters == "" and session[0]:
         msg = "**{}** players playing **{}** gamemode:```\n".format(len(session[1]),
@@ -1476,7 +1481,7 @@ async def cmd_retract(message, parameters):
             await log(1, "{0} ({1}) RETRACT VOTE".format(get_name(message.author.id), message.author.id))
         else:
             if session[1][message.author.id][1] in COMMANDS_FOR_ROLE['kill']:
-                if get_role(message.author.id, 'actualrole') == ('hunter' or 'vengeful ghost'):
+                if get_role(message.author.id, 'actual') == ('hunter' or 'vengeful ghost'):
                     return
                 if not message.channel.is_private:
                     try:
@@ -3576,7 +3581,7 @@ async def player_deaths(players_dict): # players_dict = {dead : (reason, kill_te
                     #look for the first players not dead (or break after one loop)
                     while not session[1][players[first]][0]:
                         if first == 0:
-                            first == len(players) - 1
+                            first = len(players) - 1
                         else:
                             first -= 1
                         if not skip_dead:
@@ -3627,7 +3632,7 @@ async def player_deaths(players_dict): # players_dict = {dead : (reason, kill_te
                         await player_deaths({end_voter : ("desperation", get_role(player, 'actualteam'))})
                 
                 #clone taking the dead's role
-                for clone in [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == "clone" and "clone:{}".format(player) in session[1][x][4]]:
+                for clone in [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == "clone" and "clone:{}".format(player) in session[1][x][4] and session[1][x][0]]:
                     member = client.get_server(WEREWOLF_SERVER).get_member(clone)
                     role = get_role(player, 'role')
                     if role == "amnesiac":
