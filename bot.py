@@ -3107,6 +3107,15 @@ async def end_game(reason, winners=None):
     session[4] = [timedelta(0), timedelta(0)]
     session[6] = ''
     session[7] = {}
+    
+    global day_warning
+    global day_timeout
+    global night_warning
+    global night_timeout
+    day_warning = DEFAULT_DAY_WARNING
+    day_timeout = DEFAULT_DAY_TIMEOUT
+    night_warning = DEFAULT_NIGHT_WARNING
+    night_timeout = DEFAULT_NIGHT_TIMEOUT
 
     perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
     perms.send_messages = True
@@ -3742,7 +3751,7 @@ async def player_deaths(players_dict): # players_dict = {dead : (reason, kill_te
                             session[1][clone][4].remove("charmed")
                         elif role == "succubus"  and "entranced" in session[1][clone][4]:
                             session[1][clone][4].remove("entranced")
-                            
+                        session[1][clone][1] = role
                         if member:
                             try:
                                 await client.send_message(member, "You have cloned your target and are now a **{0}**.".format(role))
@@ -4919,11 +4928,6 @@ async def game_loop(ses=None):
     if session[0]:
         win_msg = win_condition()
         await end_game(win_msg[1], win_msg[2])
-        
-        day_warning = DEFAULT_DAY_WARNING
-        day_timeout = DEFAULT_DAY_TIMEOUT
-        night_warning = DEFAULT_NIGHT_WARNING
-        night_timeout = DEFAULT_NIGHT_TIMEOUT
         
 
 async def start_votes(player):
