@@ -1,3 +1,4 @@
+from datetime import datetime
 import asyncio
 import discord
 from discord.ext import commands
@@ -21,6 +22,7 @@ class WerewolfBot(commands.Bot):
         self.config = config
         self.restart = kwargs.get('restart', False)
         self._app_info = None
+        self.uptime = None
         self.WEREWOLF_SERVER = None
         self.GAME_CHANNEL = None
         self.DEBUG_CHANNEL = None
@@ -28,10 +30,18 @@ class WerewolfBot(commands.Bot):
         self.PLAYERS_ROLE = None
 
         super().__init__(self.__prefix)
+        self.remove_command('help')
         print('Done init')
 
     async def on_ready(self):
         print('on_ready triggered!')
+        if self.uptime is None:
+            await self.async_init()
+        print('Done on_ready!')
+    
+    async def async_init(self):
+        print('Starting async init')
+        self.uptime = datetime.now()
         self._app_info = await self.application_info()
         self.WEREWOLF_SERVER = self.get_guild(self.config.WEREWOLF_SERVER_ID)
         if not self.WEREWOLF_SERVER:
@@ -47,7 +57,7 @@ class WerewolfBot(commands.Bot):
             if not getattr(self, field):
                 await self.shutdown(f'Error: could not find {field}. '
                                     f'Please double-check {field}_ID in config.py.')
-        print('Done on_ready!')
+
     
     async def on_message(self, message):
         print(message)
