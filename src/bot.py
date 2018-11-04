@@ -1,9 +1,12 @@
+import os
 from datetime import datetime
 import asyncio
 import discord
 from discord.ext import commands
 
 class WerewolfBot(commands.Bot):
+    extensions = ['cogs.meta']
+
     @staticmethod
     def __prefix(bot: commands.Bot, message: discord.Message):
         prefixes = [bot.config.BOT_PREFIX]
@@ -16,7 +19,6 @@ class WerewolfBot(commands.Bot):
         return discord.utils.oauth_url(
             self._app_info.id if self._app_info else '<insert bot client id>',
             268536848)
-
 
     def __init__(self, config, *args, **kwargs):
         self.config = config
@@ -31,6 +33,8 @@ class WerewolfBot(commands.Bot):
 
         super().__init__(self.__prefix)
         self.remove_command('help')
+        for extension in self.get_extensions():
+            self.load_extension(extension)
         print('Done init')
 
     async def on_ready(self):
@@ -58,6 +62,11 @@ class WerewolfBot(commands.Bot):
                 await self.shutdown(f'Error: could not find {field}. '
                                     f'Please double-check {field}_ID in config.py.')
 
+    def get_extensions(self):
+        # change cogs/cogname.py to cogs.cogname
+        cog_files = [f'cogs.{cog[:-3]}' for cog in os.listdir('cogs') if cog.endswith('.py') and not cog == '__init__.py']
+        # TODO: role commands
+        return cog_files
     
     async def on_message(self, message):
         print(message)
