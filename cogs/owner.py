@@ -1,10 +1,13 @@
 import asyncio
-import sys
-import io
 import inspect
+import io
+import sys
 import traceback
+
 import discord
 from discord.ext import commands
+
+
 
 def cleanup_code(content):
     '''Automatically removes code blocks from the code.'''
@@ -15,16 +18,19 @@ def cleanup_code(content):
     # remove `foo`
     return content.strip('` \n')
 
+
 def get_syntax_error(e):
     if e.text is None:
         return f'```py\n{e.__class__.__name__}: {e}\n```'
     return f'```py\n{e.text}{"^":>{e.offset}}\n{e.__class__.__name__}: {e}```'
 
+
 class Owner():
     '''Owner-only commands.'''
+
     def __init__(self, bot):
         self.bot = bot
-    
+
     async def __local_check(self, ctx):
         return await self.bot.is_owner(ctx.author)
 
@@ -38,14 +44,14 @@ class Owner():
         '''Shuts down the bot. Owner-only.'''
         await ctx.send('Shutting down...')
         await self.bot.logout()
-    
+
     @commands.command()
     async def restart(self, ctx):
         '''Restarts the bot. Owner-only.'''
         await ctx.send('Restarting...')
         self.bot.restart = True
         await self.bot.logout()
-    
+
     @commands.command()
     async def load(self, ctx, *, cog=None):
         '''Loads <cog>. Owner-only.'''
@@ -60,7 +66,7 @@ class Owner():
                 await ctx.send(str(e))
             else:
                 await ctx.send(':thumbsup:')
-    
+
     @commands.command()
     async def unload(self, ctx, *, cog=None):
         '''Unloads <cog>. Owner-only.'''
@@ -82,7 +88,7 @@ class Owner():
             await ctx.send(':thumbsup:')
         else:
             await ctx.error(f'Module {cog} is not loaded.')
-    
+
     @commands.command('eval')
     async def eval_(self, ctx, *, expression=None):
         '''Evaluates <expression> as a Python expression. Owner-only.'''
@@ -98,7 +104,7 @@ class Owner():
         if asyncio.iscoroutine(output):
             output = await output
         await ctx.send(f'```\n{output}\n```')
-    
+
     @commands.command('exec')
     async def exec_(self, ctx, *, code=None):
         '''Executes python <code>. Owner-only.'''
@@ -118,7 +124,7 @@ class Owner():
             await ctx.send(redirected_output.getvalue())
             return
         await ctx.send(':thumbsup:')
-    
+
     @commands.command()
     async def repl(self, ctx):
         '''Launches an interactive REPL session. Owner-only.'''
@@ -208,6 +214,7 @@ class Owner():
                 pass
             except discord.HTTPException as e:
                 await ctx.send('Unexpected error: `{}`'.format(e))
-    
+
+
 def setup(bot):
     bot.add_cog(Owner(bot))

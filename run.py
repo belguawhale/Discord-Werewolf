@@ -1,13 +1,15 @@
 import os
-import sys
 import subprocess
+import sys
 import time
+
+
 
 def run_bot(autorestart):
     # From https://github.com/Cog-Creators/Red-DiscordBot/blob/develop/launcher.py
     interpreter = sys.executable
 
-    if interpreter is None: # This should never happen
+    if interpreter is None:  # This should never happen
         raise RuntimeError('Couldn\'t find Python\'s interpreter')
 
     cmd = (interpreter, 'whalewolf.py')

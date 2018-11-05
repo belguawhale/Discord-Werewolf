@@ -1,21 +1,22 @@
 from .roles import role
 
+
 class Player:
     def __init__(self, bot, id, role):
         self.bot = bot
-        self.id = id # player id
-        self._roles = [role] # list of all roles player had
+        self.id = id  # player id
+        self._roles = [role]  # list of all roles player had
         self._name = None
         self._nickname = None
         self._discriminator = None
 
     @property
     def role(self):
-        return self._roles[-1] # most recent role
-    
+        return self._roles[-1]  # most recent role
+
     @property
     def orig_role(self):
-        return self._roles[0] # original role
+        return self._roles[0]  # original role
 
     @property
     def name(self):

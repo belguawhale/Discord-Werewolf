@@ -1,5 +1,6 @@
-import discord
 import traceback
+
+import discord
 
 from src.bot import WerewolfBot
 
