@@ -1,12 +1,13 @@
+import importlib
 import os
+import sys
+import traceback
 from datetime import datetime
 import asyncio
 import discord
 from discord.ext import commands
 
 class WerewolfBot(commands.Bot):
-    extensions = ['cogs.meta']
-
     @staticmethod
     def __prefix(bot: commands.Bot, message: discord.Message):
         prefixes = [bot.config.BOT_PREFIX]
@@ -32,9 +33,10 @@ class WerewolfBot(commands.Bot):
         self.PLAYERS_ROLE = None
 
         super().__init__(self.__prefix)
-        self.remove_command('help')
-        for extension in self.get_extensions():
+        extensions = self.get_extensions()
+        for extension in extensions:
             self.load_extension(extension)
+        print(f'Loaded {", ".join(extensions)}')
         print('Done init')
 
     async def on_ready(self):
@@ -67,9 +69,16 @@ class WerewolfBot(commands.Bot):
         cog_files = [f'cogs.{cog[:-3]}' for cog in os.listdir('cogs') if cog.endswith('.py') and not cog == '__init__.py']
         # TODO: role commands
         return cog_files
+
+    def reload_extension(self, name):
+        extension = self.extensions.get(name)
+        if not extension:
+            return
+        importlib.reload(extension)
+        self.unload_extension(name)
+        self.load_extension(name)
     
     async def on_message(self, message):
-        print(message)
         await super().on_message(message)
     
     def run(self):
@@ -79,3 +88,38 @@ class WerewolfBot(commands.Bot):
         print(f'Shutting down due to {reason}')
         self.restart = restart
         await super().logout()
+
+    async def on_command_error(self, ctx, error): 
+        '''The event triggered when an error is raised while invoking a command. 
+        ctx   : Context 
+        error : Exception'''
+
+        # This prevents any commands with local handlers being handled here in on_command_error. 
+        if hasattr(ctx.command, 'on_error'): 
+            return 
+        
+        ignored = (commands.CommandNotFound,)
+        no_print = (commands.UserInputError,)
+        
+        # Allows us to check for original exceptions raised and sent to CommandInvokeError. 
+        # If nothing is found. We keep the exception passed to on_command_error. 
+        error = getattr(error, 'original', error) 
+        
+        # Anything in ignored will return and prevent anything happening. 
+        if isinstance(error, ignored): 
+            return 
+
+        elif isinstance(error, commands.DisabledCommand): 
+            return await ctx.send(f'{ctx.command.qualified_name} has been disabled.') 
+
+        elif isinstance(error, commands.NoPrivateMessage): 
+            try: 
+                return await ctx.author.send(f'{ctx.command.qualified_name} can not be used in Private Messages.') 
+            except: 
+                pass 
+
+        # All other errors not returned come here... And we can just print the default traceback. 
+        if not isinstance(error, no_print):
+            print('Ignoring exception in command {}:'.format(ctx.command), file=sys.stderr) 
+            traceback.print_exception(type(error), error, error.__traceback__, file=sys.stderr)
+        await ctx.send(f'`{error.__class__.__name__}: {error}`')

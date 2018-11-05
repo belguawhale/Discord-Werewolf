@@ -9,6 +9,9 @@ class Meta:
     
     @commands.command()
     async def ping(self, ctx):
+        '''ping takes no arguments
+
+        Checks if the bot is online.'''
         await ctx.send('Pong!')
 
 def setup(bot):
