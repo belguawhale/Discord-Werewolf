@@ -1,0 +1,12 @@
+[python]
+default_actions = *: ApplyPatchAction
+no_orig = True
+bears = PyImportSortBear,PEP8Bear,PyLintBear
+max_line_length = 120
+indent_size = 4
+pylint_rcfile = pylintrc
+force_single_line_imports = false
+
+ignore = src/whalewolf-old.py
+
+files = **.py
