@@ -4087,8 +4087,6 @@ async def game_loop(ses=None):
                             end_night = end_night and 'charm' not in session[1][player][4]
                         if "assassin" in templates:
                             end_night = end_night and [x for x in session[1][player][4] if x.startswith("assassinate:")]
-                        if role == "vengeful ghost" and [x for x in session[1][player][4] if x.startswith("vengeance:")]:
-                            end_night = end_night and session[1][player][4] != ''
                         if role == 'doomsayer':
                             end_night = end_night and not [x for x in session[1][player][4] if x.startswith("doom:")]
                         if roles[role][0] == 'wolf' and role in COMMANDS_FOR_ROLE['kill']:
@@ -4102,6 +4100,8 @@ async def game_loop(ses=None):
                                     wolf_kill_dict[target] += 1
                                 except KeyError:
                                     wolf_kill_dict[target] = 1
+                    if role == "vengeful ghost" and [x for x in session[1][player][4] if x.startswith("vengeance:")] and not session[1][player][0]:
+                        end_night = end_night and session[1][player][2] != ''
                 end_night = end_night and len(wolf_kill_dict) == num_kills
                 for t in wolf_kill_dict:
                     end_night = end_night and wolf_kill_dict[t] == num_wolves
