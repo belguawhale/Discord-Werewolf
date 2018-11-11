@@ -4387,10 +4387,10 @@ async def game_loop(ses=None):
                         killed_msg += "**{}** sacrificed their life to guard that of another.\n".format(get_name(bodyguard))
                         wolf_deaths.append(bodyguard)
                         wolf_deaths.remove(target)
-                    elif get_role(target, 'role') in ACTUAL_WOLVES:
-                        killed_dict[bodyguard] += 1
-                        killed_msg += "**{}**, a **bodyguard**, made the unfortunate mistake of guarding a wolf last night and is now dead.\n".format(get_name(bodyguard))
-                        wolf_deaths.append(bodyguard)
+                    #elif get_role(target, 'role') in ACTUAL_WOLVES:
+                    #    killed_dict[bodyguard] += 1
+                    #    killed_msg += "**{}**, a **bodyguard**, made the unfortunate mistake of guarding a wolf last night and is now dead.\n".format(get_name(bodyguard))
+                    #    wolf_deaths.append(bodyguard)
 
             # Vengeful ghost stuff
             for ghost in [x for x in session[1] if get_role(x, 'role') == 'vengeful ghost' and not session[1][x][0] and [a for a in session[1][x][4] if a.startswith('vengeance:')]]:
