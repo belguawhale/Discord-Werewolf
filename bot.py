@@ -3219,7 +3219,7 @@ def win_condition():
             else:
                 win_team = 'village'
                 win_lore = 'All the wolves are dead! The surviving villagers gather the bodies of the dead wolves, roast them, and have a BBQ in celebration.'
-    elif teams['village'] + teams['neutral'] >= teams['wolf'] and session[6] == 'evilvillage':
+    elif teams['village'] >= teams['wolf'] and session[6] == 'evilvillage':
         if [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'monster']:
             win_team = 'monster'
             win_lore = "Game over! The number of uninjured cultists is equal or less than the number of living villagers! as the villagers regain control over the village, the monster{0} quickly kill{1} the remaining villagers, causing the monster{0} to win.".format('s' if len([x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'monster']) > 1 else '', '' if len([x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'monster']) > 1 else 's')
