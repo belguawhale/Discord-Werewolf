@@ -699,7 +699,7 @@ async def _send_role_info(player, sendrole=True):
                     if sendrole:
                         await client.send_message(member, "Your role is **" + role + "**. " + roles[role][2] + '\n')
                     msg = []
-                    living_players = sort_players(x for x in session[1] if session[1][x][0])
+                    living_players = [x for x in session[1] if session[1][x][0]]
                     living_players_string = ['{} ({})'.format(get_name(x), x) for x in living_players]
                     if role in COMMANDS_FOR_ROLE['kill'] and roles[role][0] == 'wolf':
                         if 'angry' in session[1][player][4]:
@@ -819,7 +819,7 @@ async def _send_role_info(player, sendrole=True):
                 if [x for x in session[1][player][4] if x.startswith("vengeance:")]:
                     against = [x.split(':')[1] for x in session[1][player][4] if x.startswith('vengeance:')].pop()
                 await client.send_message(member, "You are a **vengeful ghost**, sworn to take revenge on the {0} that you believe killed you. You must kill one of them with `kill <player>` tonight. If you do not, one of them will be selected at random.".format('wolves' if against == 'wolf' else 'villagers'))
-                living_players = sort_players(x for x in session[1] if session[1][x][0] if roles[get_role(x, "role")][0] == against)
+                living_players = [x for x in session[1] if session[1][x][0] if roles[get_role(x, "role")][0] == against]
                 living_players_string = ['{} ({})'.format(get_name(x), x) for x in living_players]
                 await client.send_message(member, "Living players: ```basic\n" + '\n'.join(living_players_string) + '\n```')
             except discord.Forbidden:
@@ -837,8 +837,8 @@ async def cmd_stats(message, parameters):
             'roles' if session[6].startswith('roles') else session[6])
         reply_msg += "\n**" + str(len(session[1])) + "** players playing: **" + str(len([x for x in session[1] if session[1][x][0]])) + "** alive, "
         reply_msg += "**" + str(len([x for x in session[1] if not session[1][x][0]])) + "** dead\n"
-        reply_msg += "```basic\nLiving players:\n" + "\n".join(get_name(x) + ' (' + x + ')' for x in sort_players(session[1]) if session[1][x][0]) + '\n'
-        reply_msg += "Dead players:\n" + "\n".join(get_name(x) + ' (' + x + ')' for x in sort_players(session[1]) if not session[1][x][0]) + '\n'
+        reply_msg += "```basic\nLiving players:\n" + "\n".join(get_name(x) + ' (' + x + ')' for x in session[1] if session[1][x][0]) + '\n'
+        reply_msg += "Dead players:\n" + "\n".join(get_name(x) + ' (' + x + ')' for x in session[1] if not session[1][x][0]) + '\n'
 
         if session[6] in ('random',):
             reply_msg += '\n!stats is disabled for the {} gamemode.```'.format(session[6])
@@ -944,7 +944,7 @@ async def cmd_stats(message, parameters):
         reply_msg = reply_msg.rstrip(", ") + "```"
         await reply(message, reply_msg)
     else:
-        players = ["{} ({})".format(get_name(x), x) for x in sort_players(session[1])]
+        players = ["{} ({})".format(get_name(x), x) for x in session[1]]
         num_players = len(session[1])
         if num_players == 0:
             await client.send_message(message.channel, "There is currently no active game. Try {}join to start a new game!".format(BOT_PREFIX))
@@ -954,7 +954,7 @@ async def cmd_stats(message, parameters):
 @cmd('revealroles', [1, 1], "```\n{0}revealroles takes no arguments\n\nDisplays what each user's roles are and sends it in pm.```", 'rr')
 async def cmd_revealroles(message, parameters):
     msg = ["**Gamemode**: {}```diff".format(session[6])]
-    for player in sort_players(session[1]):
+    for player in session[1]:
         msg.append("{} {} ({}): {}; action: {}; other: {}".format(
             '+' if session[1][player][0] else '-', get_name(player), player, get_role(player, 'actual'),
             session[1][player][2], ' '.join(session[1][player][4])))
@@ -1213,7 +1213,6 @@ async def cmd_choose(message, parameters):
                         return
                     else:
                         valid_targets.append(player)
-                valid_targets = sort_players(valid_targets)
                 redirected_targets = []
                 for player in valid_targets:
                     if 'misdirection_totem2' in session[1][message.author.id][4]:
@@ -1333,7 +1332,6 @@ async def cmd_kill(message, parameters):
                         await reply(message, "You are feeling ill tonight, and are unable to kill anyone.")
                         return
                     valid_targets.append(player)
-            valid_targets = sort_players(valid_targets)
             redirected_targets = []
             for player in valid_targets:
                 if 'misdirection_totem2' in session[1][message.author.id][4]:
@@ -2021,7 +2019,6 @@ async def cmd_charm(message, parameters):
                     return
                 else:
                     valid_targets.append(player)
-            valid_targets = sort_players(valid_targets)
             redirected_targets = []
             for player in valid_targets:
                 if 'misdirection_totem2' in session[1][message.author.id][4]:
@@ -3699,7 +3696,7 @@ async def player_deaths(players_dict): # players_dict = {dead : (reason, kill_te
                     players = [x for x in session[1]]
                     #mad scientist skips dead players if over 16p, random mode, rapidfire mode (or maelstrom)
                     skip_dead = False
-                    if len(players) > 15 or session[6] == ('random' or 'rapidfire'):
+                    if len(players) > 15 or session[6] in ['random', 'rapidfire']:
                         skip_dead = True
                     first = players.index(player)
                     #look for the first players not dead (or break after one loop)
@@ -4153,7 +4150,7 @@ async def game_loop(ses=None):
                 else:
                     killed_dict[player] = 0
             killed_players = []
-            alive_players = sort_players(x for x in session[1] if (session[1][x][0] or (get_role(x, 'role') == "vengeful ghost" and [a for a in session[1][x][4] if a.startswith("vengeance:")])))
+            alive_players = [x for x in session[1] if (session[1][x][0] or (get_role(x, 'role') == "vengeful ghost" and [a for a in session[1][x][4] if a.startswith("vengeance:")]))]
             log_msg = ["SUNRISE LOG:"]
             if session[0]:
                 for player in alive_players:
