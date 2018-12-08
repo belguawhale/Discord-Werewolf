@@ -4053,7 +4053,7 @@ async def game_loop(ses=None):
                         if role == 'shaman':
                             if session[6] == "mudkip":
                                 session[1][player][2] = random.choice(["pestilence_totem", "death_totem"]) if not night == 1 else "death_totem"
-                            if session[6] == 'aleatoire':
+                            elif session[6] == 'aleatoire':
                                 #protection (40%), death (20%), retribution (20%), silence (10%), desperation (5%), pestilence (5%).
                                 session[1][player][2] = random.choice(["protection_totem"] * 8 + ["death_totem"] * 4 + ["retribution_totem"] * 4 + ["silence_totem"] * 2 + ["desperation_totem"] + ["pestilence_totem"])
                             else:
