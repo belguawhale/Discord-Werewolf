@@ -1271,8 +1271,11 @@ async def cmd_kill(message, parameters):
             if 'hunterbullet' not in session[1][message.author.id][4]:
                 await reply(message, "You have already killed someone this game.")
                 return
-            elif session[1][message.author.id][2] not in ['', message.author.id]:
-                await reply(message, "You have already chosen to kill **{}**.".format(get_name(session[1][message.author.id][2])))
+            elif session[1][message.author.id][2]:
+                if session[1][message.author.id][2] == message.author.id:
+                    await reply(message, "You have already chosen to not kill tonight".format(get_name(session[1][message.author.id][2])))
+                else:
+                    await reply(message, "You have already chosen to kill **{}**.".format(get_name(session[1][message.author.id][2])))
                 return
             if "silence_totem2" in session[1][message.author.id][4]:
                 await reply(message, "You have been silenced, and are unable to use any special powers.")
@@ -3277,7 +3280,7 @@ def win_condition():
             winners.append(player)
         if get_role(player, 'role') == 'clone' and session[1][player][0]:
             winners.append(player)
-        if get_role(player, 'role') == 'lycan' and session[1][player][0] and win_team == 'village':
+        if get_role(player, 'role') == 'lycan' and win_team == 'village':
             winners.append(player)
         if (get_role(player, 'role') == 'turncoat') and (('side:villagers' in session[1][player][4] and win_team == 'village') or ('side:wolves' in session[1][player][4] and win_team == 'wolf')):
             winners.append(player)
