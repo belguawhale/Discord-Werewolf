@@ -598,7 +598,8 @@ async def cmd_role(message, parameters):
         return
     elif _autocomplete(parameters, roles)[1] == 1:
         role = _autocomplete(parameters, roles)[0]
-        await reply(message, "```\nRole name: {}\nTeam: {}\nDescription: {}\n```".format(role, roles[role][0], roles[role][2]))
+        await reply(message, "<https://werewolf.miraheze.org/wiki/{}>\n```\nRole name: {}\nTeam: {}\nDescription: {}\n```".format(
+            role + "_(role)" if role == "lycan" else role.replace(' ', '_'), role, roles[role][0], roles[role][2]))
         return
     params = parameters.split(' ')
     gamemode = 'default'
@@ -923,7 +924,15 @@ async def cmd_stats(message, parameters):
                     if role != 'traitor':
                         role_dict[role][0] -= 1
                         role_dict[role][1] -= 1
-                    
+        
+        #amnesiacs show amnesiac even after turning
+        for player in session[1]:
+            role = get_role(player, 'role')
+            if session[1][player][0] and "amnesiac" in session[1][player][4]:
+                role_dict["amnesiac"][0] += 1
+                role_dict["amnesiac"][1] += 1
+                role_dict[role][0] -= 1
+                role_dict[role][1] -= 1
 
         reply_msg += "\nCurrent roles: "
         for template in TEMPLATES_ORDERED:
@@ -2397,9 +2406,9 @@ async def cmd_fstasis(message, parameters):
 async def cmd_gamemode(message, parameters):
     gamemode, num = _autocomplete(parameters, gamemodes)
     if num == 1 and parameters != '':
-        await reply(message, "```\nGamemode: {}\nPlayers: {}\nDescription: {}\n\nUse the command "
-                             "`!roles {} guide` to view roles for this gamemode.```".format(gamemode,
-        str(gamemodes[gamemode]['min_players']) + '-' + str(gamemodes[gamemode]['max_players']),
+        await reply(message, "<https://werewolf.miraheze.org/wiki/{}>\n```\nGamemode: {}\nPlayers: {}\nDescription: {}\n\nUse the command "
+                             "`!roles {} guide` to view roles for this gamemode.```".format(gamemode + "_(gamemode)" if gamemode == "lycan" else gamemode.replace(' ', '_'),
+        gamemode, str(gamemodes[gamemode]['min_players']) + '-' + str(gamemodes[gamemode]['max_players']),
         gamemodes[gamemode]['description'], gamemode))
     else:
         game_list = ""
@@ -3023,10 +3032,6 @@ async def assign_roles(gamemode):
                 session[1][player][4].append('hunterbullet')
             if 'role:priest' in session[1][player][4]:
                 session[1][player][4].append('bless')
-            if 'role:matchmaker' in session[1][player][4]:
-                session[1][player][4].append('match')
-            if 'role:clone' in session[1][player][4]:
-                session[1][player][4].append('clone')
         elif role == 'priest':
             session[1][player][4].append('bless')
         elif role == 'clone':
@@ -3252,7 +3257,8 @@ def win_condition():
             win_lore = "Game over! The number of uninjured cultists is equal or less than the number of living villagers! They manage to regain control of the village and dispose of the remaining cultists."
     else:
         return None
-
+        
+        
     for player in session[1]:
         lovers = []
         for n in session[1][player][4]:
@@ -3262,17 +3268,15 @@ def win_condition():
         templates = get_role(player, 'templates')
         if get_role(player, 'role') == 'piper' and win_team == 'pipers':
             winners.append(player)
-        if ('entranced' in session[1][player][4] or get_role(player, 'role') == 'succubus') and win_team == 'succubi':
+        if (get_role(player, 'role') == 'succubus' or 'entranced' in session[1][player][4]) and win_team == 'succubi':
             winners.append(player)
-        if get_role(player, 'actualteam') == win_team and 'entranced' not in session[1][player][4] and 'charmed' not in session[1][player][4]:
+        if get_role(player, 'actualteam') == win_team:
             winners.append(player)
-        if [x for x in lovers if session[1][x][0]]:
+        if [x for x in lovers if (session[1][x][0] and session[1][player][0])]:
             winners.append(player)
-        if get_role(player, 'role') == 'jester' and 'lynched' in session[1][player][4]:
-            winners.append
         if get_role(player, 'role') == 'vengeful ghost' and not session[1][player][0] and [x.split(':')[1] for x in session[1][player][4] if x.startswith("vengeance:")] and [x.split(':')[1] for x in session[1][player][4] if x.startswith("vengeance:")].pop() != win_team:
             winners.append(player)
-        if (get_role(player, 'role') == 'amnesiac' or (get_role(player, 'role') == 'vengeful ghost' and session[1][player][0])) and win_team == 'village' and 'entranced' not in session[1][player][4]:
+        if (get_role(player, 'role') == 'amnesiac' or (get_role(player, 'role') == 'vengeful ghost' and session[1][player][0]) and win_team == 'village'):
             winners.append(player)
         if get_role(player, 'role') == 'jester' and 'lynched' in session[1][player][4]:
             winners.append(player)
@@ -3284,6 +3288,8 @@ def win_condition():
             winners.append(player)
         if (get_role(player, 'role') == 'turncoat') and (('side:villagers' in session[1][player][4] and win_team == 'village') or ('side:wolves' in session[1][player][4] and win_team == 'wolf')):
             winners.append(player)
+        if ((win_team != 'succubi' and 'entranced' in session[1][player][4]) or 'charmed' in session[1][player][4]) and player in winners:
+            winners.remove(player)
     return [win_team, win_lore + '\n\n' + end_game_stats(), winners]
 
 def end_game_stats():
@@ -4967,6 +4973,7 @@ async def game_loop(ses=None):
                         role = [x.split(':')[1].replace("_", " ") for x in session[1][player][4] if x.startswith("role:")].pop()
                         session[1][player][1] = role
                         session[1][player][4] = [x for x in session[1][player][4] if not x.startswith("role:")]
+                        session[1][player][4].append('amnesiac')
                         try:
                             await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(player), "Your amnesia clears and you now remember that you are a{0} **{1}**!".format("n" if role.lower()[0] in ['a', 'e', 'i', 'o', 'u'] else "", role))
                             if role in WOLFCHAT_ROLES:
@@ -5129,9 +5136,9 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
                                                          "it will be given to a random player. You win if you are alive by the end of the game."],
          'fool' : ['neutral', 'fools', "You become the sole winner if you are lynched during the day. You cannot win otherwise."],
          'cursed villager' : ['template', 'cursed villagers', "This template is hidden and is seen as a wolf by the seer. Roles normally seen as wolf, the seer, and the fool cannot be cursed."],
-         'gunner' : ['template', 'gunners', "This template gives the player a gun. Type `{0}shoot <player>` in channel during the day to shoot <player>. "
+         'gunner' : ['template', 'gunners', ("This template gives the player a gun. Type `{0}shoot <player>` in channel during the day to shoot <player>."
                                             "If you are a villager and shoot a wolf, they will die. Otherwise, there is a chance of killing them, injuring "
-                                            "them, or the gun exploding. If you are a wolf and shoot at a wolf, you will intentionally miss."],
+                                            "them, or the gun exploding. If you are a wolf and shoot at a wolf, you will intentionally miss.".format(BOT_PREFIX))],
          'assassin' : ['template', 'assassins', "Choose a target with `target <player>`. If you die you will take out your target with you. If your target dies you may choose another one. "
                                                 "Wolves and info-obtaining roles (such as seer and oracle) may not be assassin."],
          'matchmaker' : ['village', 'matchmakers', "You can select two players to be lovers with `choose <player1> and <player2>`."
@@ -5141,7 +5148,7 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
          'guardian angel' : ['village', 'guardian angels', "Your job is to protect the villagers. Use `guard <player>` in private message during night to protect "
                                                            "them from dying. You may protect yourself, however you may not guard the same player two nights in a row."],
          'jester' : ['neutral', 'jesters', "You will win alongside the normal winners if you are lynched during the day. You cannot otherwise win this game."],
-         'minion' : ['wolf', 'minions', "It is your job to help the wolves kill all of the villagers. You are told who your leaders are on the first night, otherwise, you are a cultist."],
+         'minion' : ['wolf', 'minions', "It is your job to help the wolves kill all of the villagers. You are told who your leaders are on the first night, though they do not know you and you must tell them. Otherwise you have no powers, like a cultist"],
          'amnesiac' : ['neutral', 'amnesiacs', "You have forgotten your original role and need to wait a few nights to let the fog clear. You will win with the default role, until you remember your original role."],
          'blessed villager' : ['template', 'blessed villagers', "You feel incredibly safe. You won't be able to die as a normal villager, unless two players target you, or you are lynched at day."],
          'vengeful ghost' : ['neutral', 'vengeful ghosts', "Your soul will never be at rest. If you are killed during the game, you will swear eternal revenge upon team that killed you."
