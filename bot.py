@@ -5730,6 +5730,7 @@ gamemodes = {
         'description' : "A free for all with many unstable alignments.",
         'min_players' : 4,
         'max_players' : 16,
+        'chance' : 0,
         'roles' : {
             #4, 5, 6, 7, 8, 9, 10,11,12,13,14,15,16
             'wolf' :
