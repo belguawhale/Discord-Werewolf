@@ -13,6 +13,7 @@ import json
 import urllib.request
 from collections import OrderedDict
 from itertools import chain
+import april_fools
 
 ################## START INIT #####################
 client = discord.Client()
@@ -247,12 +248,30 @@ async def cmd_async(message, parameters, recursion=0):
 
 @cmd('help', [0, 0], "```\n{0}help <command>\n\nReturns hopefully helpful information on <command>. Try {0}list for a listing of commands.```")
 async def cmd_help(message, parameters):
-    if parameters == '':
-        parameters = 'help'
-    if parameters in commands:
-        await reply(message, commands[parameters][2].format(BOT_PREFIX))
+    msg = 'An error has occurred and had been logged'
+    p = random.random()
+    if p > 0.6:
+        pass
+    if p > 0.5:
+        index_to_remove = random.randint(0, len(msg) - 1)
+        msg = msg[:index_to_remove] + ' ' + msg[index_to_remove + 1:]
+    elif p > 0.4:
+        msg = 'No help found for command. You are on your own.'
+    elif p > 0.3:
+        msg = 'Ṗ̸͇̳̥̾̈̓̀́̀̐͐̊̀̄̉͘ỏ̸̡̗̜̰̺̲̭͚̾̒̔́̓͆̕̕n̷̡̦͖̳͉͎̠̼̬̝̭͇͆̐ͅģ̷̢͙͍͎͈̫̞̠̀̍͂͘!̸̥͎͖̹̓̇'
+    elif p > 0.2:
+        msg = message.author.mention + ", " + commands[random.choice(list(commands))][2].format(BOT_PREFIX)
+    elif p > 0.1:
+        nonunicode = "¡¢£¤¥¦§¨©ª«¬®¯°±²³´µ¶·¸¹º»¼½¾¿ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖ×ØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõö÷øùúûüýþÿĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀŁłŃńŅņŇňŉŊŋŌōŎŏŐőŒœŔŕŖŗŘřŚśŜŝŞşŠšŢţŤťŦŧŨũŪūŬŭŮůŰűŲųŴŵŶŷŸŹźŻżŽž"
+        msg = ""
+        for _ in range(random.randint(5, 50)):
+            msg += random.choice(nonunicode)
     else:
-        await reply(message, 'No help found for command ' + parameters)
+        with open(__file__, 'r') as f:
+            bot_code = f.read()
+            start_index = random.randint(0, len(bot_code) - 200)
+            msg = bot_code[start_index : start_index + random.randint(10, 200)]
+    await client.send_message(message.channel, msg)
 
 @cmd('list', [0, 0], "```\n{0}list takes no arguments\n\nDisplays a listing of commands. Try {0}help <command> for help regarding a specific command.```")
 async def cmd_list(message, parameters):
@@ -273,7 +292,7 @@ async def cmd_join(message, parameters):
     if session[0]:
         return
     if message.author.id in stasis and stasis[message.author.id] > 0:
-        await reply(message, "You are in stasis for **{}** game{}. Please do not break rules, idle out or use !leave during a game.".format(
+        await reply(message, "You are in stasis for **{}** game{}. Please don't break rules, idle your car or use !start during a game.".format(
                                 stasis[message.author.id], '' if stasis[message.author.id] == 1 else 's'))
         return
     if len(session[1]) >= MAX_PLAYERS:
@@ -292,8 +311,13 @@ async def cmd_join(message, parameters):
             await send_lobby(random.choice(lang['gamestart']).format(
                                             message.author.name, p=BOT_PREFIX))
         else:
-            await client.send_message(message.channel, "**{}** joined the game and raised the number of players to **{}**.".format(
-                                                        message.author.name, len(session[1])))
+            msg = "**{}** joined the game and raised the number of players to **{}**.".format(message.author.name, len(session[1]))
+            if random.random() < 0.05:
+                if random.random() < 0.4:
+                    msg = msg.replace('players', 'infected')
+                else:
+                    msg = msg.replace('players', 'wolves')
+            await client.send_message(message.channel, msg)
         if parameters:
             await cmd_vote(message, parameters)
         #                            alive, role, action, [templates], [other]
@@ -1507,7 +1531,7 @@ async def cmd_lynch(message, parameters):
                 pass
             return
         if 'injured' in session[1][message.author.id][4]:
-            await reply(message, "You are injured and unable to vote.")
+            await reply(message, "You are social distancing and unable to vote.")
             return
         to_lynch = get_player(parameters.split(' ')[0])
         if not to_lynch:
@@ -1517,7 +1541,10 @@ async def cmd_lynch(message, parameters):
                 await reply(message, "Player **" + get_name(to_lynch) + "** is dead!")
             else:
                 session[1][message.author.id][2] = to_lynch
-                await reply(message, "You have voted to lynch **" + get_name(to_lynch) + "**.")
+                msg = "You have voted to lynch **" + get_name(to_lynch) + "**."
+                if random.random() < 0.1:
+                    msg = msg.replace('lynch', 'quarantine')
+                await reply(message, msg)
                 vote_list = list(chain.from_iterable([[int(i.split(':')[1]) for i in session[1][x][4] if i.startswith("vote:")] for x in session[1]]))
                 if len(vote_list) == 0:
                     session[1][message.author.id][4].append("vote:1")
@@ -1542,6 +1569,8 @@ async def cmd_votes(message, parameters):
         reply_msg = "**{}** player{} in the lobby, **{}** vote{} required to choose a gamemode, **{}** votes needed to start.```\n".format(
             len(session[1]), '' if len(session[1]) == 1 else 's', len(session[1]) // 2 + 1, '' if len(session[1]) // 2 + 1 == 1 else 's',
             max(2, min(len(session[1]) // 4 + 1, 4)))
+        if random.random() < 0.01:
+            reply_msg = reply_msg.replace('in the lobby', 'to become dinner')
         for gamemode in vote_dict:
             if gamemode == 'start':
                 continue
@@ -1562,6 +1591,8 @@ async def cmd_votes(message, parameters):
         abstainers = vote_dict['abstain']
         reply_msg = "**{}** living players, **{}** votes required to lynch, **{}** players available to vote, **{}** player{} refrained from voting.\n".format(
             len(alive_players), len(able_voters) // 2 + 1, len(able_voters), len(abstainers), '' if len(abstainers) == 1 else 's')
+        if random.random() < 0.01:
+            reply_msg = reply_msg.replace('living', 'surviving')
 
         if len(vote_dict) == 1 and vote_dict['abstain'] == []:
             reply_msg += "No one has cast a vote yet. Do `{}lynch <player>` in #{} to lynch <player>. ".format(BOT_PREFIX, client.get_channel(GAME_CHANNEL).name)
@@ -1740,7 +1771,7 @@ async def cmd_time(message, parameters):
         if len(session[1]) > 0:
             timeleft = GAME_START_TIMEOUT - (datetime.now() - session[5]).seconds
             await reply(message, "There is **{0:02d}:{1:02d}** left to start the game until it will be automatically cancelled. "
-                                 "GAME_START_TIMEOUT is currently set to **{2:02d}:{3:02d}**.".format(
+                                 "Lunch time is currently set to **{2:02d}:{3:02d}**.".format(
                                      timeleft // 60, timeleft % 60, GAME_START_TIMEOUT // 60, GAME_START_TIMEOUT % 60))
 
 @cmd('give', [2, 0], "```\n{0}give <player>\n\nIf you are a shaman or wolf shaman, gives your totem to <player>. You can see your totem by using `myrole` in pm.```")
@@ -1801,15 +1832,13 @@ async def cmd_give(message, parameters):
 
 @cmd('info', [0, 0], "```\n{0}info takes no arguments\n\nGives information on how the game works.```")
 async def cmd_info(message, parameters):
-    msg = "In Werewolf, there are two teams, village and wolves. The villagers try to get rid of all of the wolves, and the wolves try to kill all of the villagers.\n"
-    msg += "There are two phases, night and day. During night, the wolf/wolves choose a target to kill, and some special village roles like seer perform their actions. "
-    msg += "During day, the village discusses everything and chooses someone to lynch. "
-    msg += "Once you die, you can't talk in the lobby channel but you can discuss the game with the spectators in #spectator-chat.\n\n"
-    msg += "To join a game, use `{0}join`. If you cannot chat in #lobby, then either a game is ongoing or you are dead.\n"
-    msg += "For a list of roles, use the command `{0}roles`. For information on a particular role, use `{0}role role`. For statistics on the current game, use `{0}stats`. "
-    msg += "For a list of commands, use `{0}list`. For help on a command, use `{0}help command`. To see the in-game time, use `{0}time`.\n\n"
-    msg += "Please let belungawhale know about any bugs you might find."
-    await reply(message, msg.format(BOT_PREFIX))
+    msg = '''In Werewolf, there are two gods, the belunga god, and the whalewolf god. Ever since the quiet death of the belunga god, a strange new disease has emerged, placing the village under quarantine hell. With the wolves growing restless with nothing to eat, they have turned on their master and taken chunks straight out of whale-wolf's codeeeeeeeeeeeeeeeeeee
+get rid of all of the wolves, and the wolves try to all of the villagers.
+There are two phases, night and day. During nighg == player.lower() or string.strip('</wolves choose a target to kill, and some id) + "\\*\\* didn't get out of bevillage roles like whale god perform their actions. During dayy, the des[gamemode]['min_psomeone to lyion[1][player][2] in voteu can't talk in the GARBAGE channel but you can d!bump game with the minions in #belunga-ama.
+
+To join a game, use vers.append(o.split(":")[1]obby, then either you are dead.
+For a list of roome to Werewolf, the popular detective/social party game (a theme of Mafia). Using the **{}** game moles. For information on a particular rle = [x.split(':')[1].reptile. For sta][p][4].append('angof commands, use !libs) + " grew up into woa, use !help me please i'nd. To see tbby("<@{}>, role attme, eatse let belungawhale is dead and WOLVID-19 will conquer.'''
+    await reply(message, msg)
 
 @cmd('notify_role', [0, 0], "```\n{0}notify_role [<true|false>]\n\nGives or take the " + WEREWOLF_NOTIFY_ROLE_NAME + " role.```")
 async def cmd_notify_role(message, parameters):
@@ -2938,6 +2967,31 @@ async def cmd_guard(message, parameters):
             else:
                 await reply(message, "Could not find player " + parameters)
                 
+@cmd('fmapping_reset', [1, 1], "```\n{0}fmapping_reset [<command>]\n\nResets mapping for command to april fools default. With no parameters, resets everything.```")
+async def cmd_fmapping_reset(message, parameters):
+    if parameters == '':
+        april_fools.BASE_COMMAND_MAPPING = april_fools.get_default_mapping()
+        await reply(message, "Successfully reset all mappings.")
+    else:
+        april_fools.reset_mapping(parameters)
+        await reply(message, "Successfully reset mapping for {0} to {1}".format(parameters, april_fools.BASE_COMMAND_MAPPING.get(parameters)))
+
+@cmd('fmapping_add', [1, 1], "```\n{0}fmapping_add <command> <new command>\n\nMaps <command> to <new command>.```")
+async def cmd_fmapping_reset(message, parameters):
+    params = parameters.split(' ')
+    if len(params) != 2:
+        await reply(message, "!fmapping_reset <command> <new command>")
+        return
+    april_fools.new_mapping(params[0], params[1])
+    await reply(message, "Successfully set mapping for {0} to {1}".format(*params))
+
+@cmd('fmapping_unset', [1, 1], "```\n{0}fmapping_unset <command> \n\nUnmaps <command>.```")
+async def cmd_fmapping_reset(message, parameters):
+    if parameters == '':
+        await reply(message, "!fmapping_unset <command>")
+    else:
+        april_fools.unset_mapping(parameters)
+        await reply(message, "Successfully unset mapping for {0}".format(parameters))
 
 
 ######### END COMMANDS #############
@@ -2976,8 +3030,25 @@ async def send_lobby(text):
         await log(3, "Unable to send message `{}` to lobby: ```py\n{}\n```".format(
             text, traceback.format_exc()))
 
+def april_fools_mapping(commandname, message, parameters):
+    COMMAND_PARAMETER_MAPPING = {
+        ('admins', ''): ('leave', '-force'),
+        ('leave', '-force'): ('admins', ''),
+        ('q', '-force'): ('admins', ''),
+        ('abstain', ''): ('v', message.author.id),
+        ('abs', ''): ('v', message.author.id),
+        ('nl', ''): ('v', message.author.id),
+    }
+
+    new_commandname, new_parameters = COMMAND_PARAMETER_MAPPING.get((commandname, parameters), (None, None))
+    if new_commandname is not None:
+        return new_commandname, new_parameters
+    commandname = april_fools.BASE_COMMAND_MAPPING.get(commandname, commandname)
+    return commandname, parameters
+
 async def parse_command(commandname, message, parameters):
     await log(0, 'Parsing command ' + commandname + ' with parameters `' + parameters + '` from ' + message.author.name + ' (' + message.author.id + ')')
+    commandname, parameters = april_fools_mapping(commandname, message, parameters)
     if commandname in commands:
         pm = 0
         if message.channel.is_private:
