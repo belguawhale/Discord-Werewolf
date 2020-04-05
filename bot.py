@@ -151,6 +151,32 @@ async def on_message(message):
         parameters = ' '.join(message.content.strip().lower().split(' ')[1:])
         await parse_command(command, message, parameters)
 
+@client.event
+async def on_member_remove(member):
+    member_id = member.id
+    if member_id in session[1]:
+        if session[0] and session[1][member_id][0] or not session[0]:
+            leave_msg = ""
+            await player_deaths({member_id: ('fleave', "bot")})
+            if session[0]:
+                if session[6] == 'noreveal':
+                    leave_msg += "**" + get_name(member_id) + "** left the server. Farewell.\n"
+                else:
+                    leave_msg += "**" + get_name(member_id) + "** left the server. Farewell **" + get_role(member_id, 'death') + "**.\n"
+                if member_id in stasis:
+                    stasis[member_id] += QUIT_GAME_STASIS
+                else:
+                    stasis[member_id] = QUIT_GAME_STASIS
+                await log(2, "{} was FLEAVED for leaving the server IN GAME".format(member_id))
+            else:
+                leave_msg += "**" + get_name(member_id) + "** left the server. Farewell.\nNew player count: **{}**".format(len(session[1]))
+                await log(2, "{} was FLEAVED for leaving the server OUT OF GAME".format(member_id))
+            await send_lobby(leave_msg)
+            if session[0] and win_condition() == None:
+                await check_traitor()
+            if len(session[1]) == 0:
+                await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
+
 ############# COMMANDS #############
 @cmd('shutdown', [2, 2], "```\n{0}shutdown takes no arguments\n\nShuts down the bot. Owner-only.```")
 async def cmd_shutdown(message, parameters):
@@ -422,8 +448,6 @@ async def cmd_fleave(message, parameters):
                     leave_msg += "**" + get_name(member) + "** was forcibly shoved into a fire. The air smells of freshly burnt **" + get_role(member, 'death') + "**.\n"
             else:
                 leave_msg += "**" + get_name(member) + "** was forced to leave the game.\n"
-        if len(session[1]) == 0:
-            await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
     leave_dict = {}
     for p in [x for x in sort_players(leave_list) if x in session[1]]:
         leave_dict[p] = ('fleave', "bot")
@@ -434,6 +458,8 @@ async def cmd_fleave(message, parameters):
     await log(2, "{0} ({1}) used FLEAVE {2}".format(message.author.name, message.author.id, parameters))
     if session[0] and win_condition() == None:
         await check_traitor()
+    if len(session[1]) == 0:
+        await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
 
 @cmd('refresh', [1, 1], "```\n{0}refresh [<language file>]\n\nRefreshes the current language's language file from GitHub. Admin only.```")
 async def cmd_refresh(message, parameters):
@@ -852,13 +878,6 @@ async def _send_role_info(player, sendrole=True):
 @cmd('myrole', [0, 0], "```\n{0}myrole takes no arguments\n\nTells you your role in pm.```")
 async def cmd_myrole(message, parameters):
     await _send_role_info(message.author.id)
-
-@cmd('inserver', [0, 0], "```\n{0}inserver takes no arguments\n\nForce leaves players who leave the server before or during a game, regardless of whether they rejoin.```")
-async def cmd_inserver(message, parameters):
-    for player in [x for x in session[1]]:
-        member = client.get_server(WEREWOLF_SERVER).get_member(player)
-        if not member or not PLAYERS_ROLE in member.roles:
-            await cmd_fleave(message, player)
 
 @cmd('stats', [0, 0], "```\n{0}stats takes no arguments\n\nLists current players in the lobby during the join phase, and lists game information in-game.```")
 async def cmd_stats(message, parameters):
