@@ -155,27 +155,28 @@ async def on_message(message):
 async def on_member_remove(member):
     member_id = member.id
     if member_id in session[1]:
-        if session[0] and session[1][member_id][0] or not session[0]:
-            leave_msg = ""
+        leave_msg = ""
+        if session[0] and session[1][member_id][0]:
             await player_deaths({member_id: ('fleave', "bot")})
-            if session[0]:
-                if session[6] == 'noreveal':
-                    leave_msg += "**" + get_name(member_id) + "** left the server. Farewell.\n"
-                else:
-                    leave_msg += "**" + get_name(member_id) + "** left the server. Farewell **" + get_role(member_id, 'death') + "**.\n"
-                if member_id in stasis:
-                    stasis[member_id] += QUIT_GAME_STASIS
-                else:
-                    stasis[member_id] = QUIT_GAME_STASIS
-                await log(2, "{} was FLEAVED for leaving the server IN GAME".format(member_id))
+            if session[6] == 'noreveal':
+                leave_msg += "**" + get_name(member_id) + "** left the server. Farewell.\n"
             else:
-                leave_msg += "**" + get_name(member_id) + "** left the server. Farewell.\nNew player count: **{}**".format(len(session[1]))
-                await log(2, "{} was FLEAVED for leaving the server OUT OF GAME".format(member_id))
+                leave_msg += "**" + get_name(member_id) + "** left the server. Farewell **" + get_role(member_id, 'death') + "**.\n"
+            if member_id in stasis:
+                stasis[member_id] += QUIT_GAME_STASIS
+            else:
+                stasis[member_id] = QUIT_GAME_STASIS
             await send_lobby(leave_msg)
-            if session[0] and win_condition() == None:
-                await check_traitor()
-            if len(session[1]) == 0:
-                await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
+            await log(2, "{} was FLEAVED for leaving the server IN GAME".format(member_id))
+            if win_condition() == None:
+                await check_traitor()                
+        elif not session[0]:
+            await player_deaths({member_id: ('fleave', "bot")})
+            leave_msg += "**" + get_name(member_id) + "** left the server. Farewell.\nNew player count: **{}**".format(len(session[1]))
+            await send_lobby(leave_msg)
+            await log(2, "{} was FLEAVED for leaving the server OUT OF GAME".format(member_id))
+        if len(session[1]) == 0:
+            await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
 
 ############# COMMANDS #############
 @cmd('shutdown', [2, 2], "```\n{0}shutdown takes no arguments\n\nShuts down the bot. Owner-only.```")
