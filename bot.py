@@ -154,27 +154,28 @@ async def on_message(message):
 @client.event
 async def on_member_remove(member):
     member_id = member.id
+    member_name = member.name
     if member_id in session[1]:
         leave_msg = ""
         if session[0] and session[1][member_id][0]:
             await player_deaths({member_id: ('fleave', "bot")})
             if session[6] == 'noreveal':
-                leave_msg += "**" + get_name(member_id) + "** left the server. Farewell.\n"
+                leave_msg += "**" + member_name + "** left the server. Farewell.\n"
             else:
-                leave_msg += "**" + get_name(member_id) + "** left the server. Farewell **" + get_role(member_id, 'death') + "**.\n"
+                leave_msg += "**" + member_name + "** left the server. Farewell **" + get_role(member_id, 'death') + "**.\n"
             if member_id in stasis:
                 stasis[member_id] += QUIT_GAME_STASIS
             else:
                 stasis[member_id] = QUIT_GAME_STASIS
             await send_lobby(leave_msg)
-            await log(2, "{} was FLEAVED for leaving the server IN GAME".format(member_id))
+            await log(2, "{} ({}) was FLEAVED for leaving the server IN GAME".format(member_name, member_id))
             if win_condition() == None:
                 await check_traitor()                
         elif not session[0]:
             await player_deaths({member_id: ('fleave', "bot")})
-            leave_msg += "**" + get_name(member_id) + "** left the server. Farewell.\nNew player count: **{}**".format(len(session[1]))
+            leave_msg += "**" + member_name + "** left the server. Farewell.\nNew player count: **{}**".format(len(session[1]))
             await send_lobby(leave_msg)
-            await log(2, "{} was FLEAVED for leaving the server OUT OF GAME".format(member_id))
+            await log(2, "{} ({}) was FLEAVED for leaving the server OUT OF GAME".format(member_name, member_id))
         if len(session[1]) == 0:
             await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
 
@@ -5512,7 +5513,7 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
          'blessed villager' : ['template', 'blessed villagers', "You feel incredibly safe. You won't be able to die as a normal villager, unless two players target you, or you are lynched at day."],
          'vengeful ghost' : ['neutral', 'vengeful ghosts', "Your soul will never be at rest. If you are killed during the game, you will swear eternal revenge upon team that killed you."
                                                            " Use `kill <player>` once per night after dying to kill an alive player. You only win if the team you swore revenge upon loses."],
-         'priest' : ['village', 'priests', "Once per game during the day, you may bless someone with `bless <player>` to prevent them from being killed. Furthermore, you may consecrate the dead during the day with `consecrate <player>` to settle down restless spirits and prevent the corpse from rising as undead; doing so removes your ability to participate in the vote that day."],
+         'priest' : ['village', 'priests', "Once per game during the day, you may bless someone with `bless <player>` to prevent them from being killed. Furthermore, you may consecrate the dead during the day with `consecrate <player>` to settle down restless spirits and prevent the corpse from rising as undead that night; doing so removes your ability to participate in the vote that day."],
          'doomsayer' : ['wolf', 'doomsayers', "You can see how bad luck will befall someone at night by using `see <player>` on them. You may also use `kill <player>` to kill a villager."],
          'succubus' : ['neutral', 'succubi', "You may entrance someone and make them follow you by visiting them at night. If all alive players are entranced, you win. Use `visit <player>` to visit a player or `pass` to stay home. If you visit the victim of the wolves, you will die."],
          'mayor' : ['template', 'mayors', "If the mayor would by lynched during the day, they reveal that they are the mayor and nobody is lynched that day. A mayor that has previously been revealed will be lynched as normal."],
