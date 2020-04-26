@@ -2983,12 +2983,20 @@ async def reply(message, text, cleanmessage=True):
         text = text.replace('@', '@\u200b')
     await client.send_message(message.channel, message.author.mention + ', ' + str(text))
 
+async def send_long_post(channel, post):
+    if len(post) <= 2000:
+        await client.send_message(channel, post)
+        return
+    else:
+        await client.send_message(channel, post[:2000])
+        await send_long_post(channel, post[2000:])
+
+
 async def send_lobby(text):
     for i in range(3):
         try:
-            msg = await client.send_message(client.get_channel(GAME_CHANNEL), text)
+            msg = await send_long_post(client.get_channel(GAME_CHANNEL), text)
             return msg
-            break
         except:
             await log(3, "Error in sending message `{}` to lobby: ```py\n{}\n```".format(
                 text, traceback.format_exc()))
@@ -3029,6 +3037,21 @@ async def parse_command(commandname, message, parameters):
         else:
             await log(2, 'User ' + message.author.name + ' (' + message.author.id + ') tried to use command ' + commandname + ' with parameters `' + parameters + '` without permissions!')
 
+async def send_long_log_helper(channel, post, depth):
+    max = 1950
+    if len(post) <= max:
+        if depth:
+            await client.send_message(channel, "[CONTINUED] " + "```py\n" + post[:max])
+        else:
+            await client.send_message(channel, post)
+            return
+    else:
+        if depth:
+            await client.send_message(channel, "[CONTINUED] " + "```py\n" + post[:max] + "```")
+        else:
+            await client.send_message(channel, post[:max] + "```")
+        await send_long_log_helper(channel, post[max:], depth + 1)
+
 async def log(loglevel, text):
     # loglevels
     # 0 = DEBUG
@@ -3044,7 +3067,7 @@ async def log(loglevel, text):
     with open(LOG_FILE, 'a', encoding='utf-8') as f:
         f.write("[{}] {}\n".format(datetime.now(), logmsg))
     if loglevel >= MIN_LOG_LEVEL:
-        await client.send_message(client.get_channel(DEBUG_CHANNEL), logmsg)
+        await send_long_log_helper(client.get_channel(DEBUG_CHANNEL), logmsg, 0)
 
 def balance_roles(massive_role_list, default_role='villager', num_players=-1):
     if num_players == -1:
@@ -5167,58 +5190,59 @@ async def game_loop(ses=None):
                         for player in [x for x in totem_dict if session[1][x][0] and totem_dict[x] > 0 and x != lynched_player]:
                             lynched_msg += "**{}** impatiently votes to lynch **{}**.\n".format(get_name(player), get_name(lynched_player))
                         lynched_msg += '\n'
-                        if 'revealing_totem' in session[1][lynched_player][4]:
-                            lynched_msg += 'As the villagers prepare to lynch **{0}**, their totem emits a brilliant flash of light! When the villagers are able to see again, '
-                            lynched_msg += 'they discover that {0} has escaped! The left-behind totem seems to have taken on the shape of a **{1}**.'
-                            if get_role(lynched_player, 'role') == 'amnesiac':
-                                role = [x.split(':')[1].replace("_", " ") for x in session[1][lynched_player][4] if x.startswith("role:")].pop()
-                                session[1][lynched_player][1] = role
-                                session[1][lynched_player][4] = [x for x in session[1][lynched_player][4] if not x.startswith("role:")]
-                                try:
-                                    await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(lynched_player), "Your totem clears your amnesia and you now fully remember who you are!")
-                                    await _send_role_info(lynched_player)
-                                    if role in WOLFCHAT_ROLES:
-                                        await wolfchat("{0} is now a **{1}**!".format(get_name(lynched_player), role))
-                                except discord.Exception:
-                                    pass
-                            lynched_msg = lynched_msg.format(get_name(lynched_player), get_role(lynched_player, 'role'))
-                            await send_lobby(lynched_msg)
-                        elif 'mayor' in get_role(lynched_player, 'templates') and 'unrevealed' in session[1][lynched_player][4]:
-                            lynched_msg += "While being dragged to the gallows, **{}** reveals that they are the **mayor**. The village agrees to let them live for now.".format(get_name(lynched_player))
-                            session[1][lynched_player][4].remove('unrevealed')
-                            await send_lobby(lynched_msg)
-                        else:
-                            if 'luck_totem2' in session[1][lynched_player][4]:
-                                lynched_player = misdirect(lynched_player)
-                            if session[6] == 'noreveal':
-                                lynched_msg += random.choice(lang['lynchednoreveal']).format(get_name(lynched_player))
+                        if lynched_player in session[1].keys():
+                            if 'revealing_totem' in session[1][lynched_player][4]:
+                                lynched_msg += 'As the villagers prepare to lynch **{0}**, their totem emits a brilliant flash of light! When the villagers are able to see again, '
+                                lynched_msg += 'they discover that {0} has escaped! The left-behind totem seems to have taken on the shape of a **{1}**.'
+                                if get_role(lynched_player, 'role') == 'amnesiac':
+                                    role = [x.split(':')[1].replace("_", " ") for x in session[1][lynched_player][4] if x.startswith("role:")].pop()
+                                    session[1][lynched_player][1] = role
+                                    session[1][lynched_player][4] = [x for x in session[1][lynched_player][4] if not x.startswith("role:")]
+                                    try:
+                                        await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(lynched_player), "Your totem clears your amnesia and you now fully remember who you are!")
+                                        await _send_role_info(lynched_player)
+                                        if role in WOLFCHAT_ROLES:
+                                            await wolfchat("{0} is now a **{1}**!".format(get_name(lynched_player), role))
+                                    except discord.Exception:
+                                        pass
+                                lynched_msg = lynched_msg.format(get_name(lynched_player), get_role(lynched_player, 'role'))
+                                await send_lobby(lynched_msg)
+                            elif 'mayor' in get_role(lynched_player, 'templates') and 'unrevealed' in session[1][lynched_player][4]:
+                                lynched_msg += "While being dragged to the gallows, **{}** reveals that they are the **mayor**. The village agrees to let them live for now.".format(get_name(lynched_player))
+                                session[1][lynched_player][4].remove('unrevealed')
+                                await send_lobby(lynched_msg)
                             else:
-                                lynched_msg += random.choice(lang['lynched']).format(get_name(lynched_player), get_role(lynched_player, 'death'))
-                            await send_lobby(lynched_msg)
-                            if get_role(lynched_player, 'role') == 'jester':
-                                session[1][lynched_player][4].append('lynched')
-                            for player in [x for x in session[1] if session[1][x][0]]:
-                                if get_role(player, 'role') == 'executioner' and 'win' not in session[1][player][4] and [x for x in session[1][player][4] if x.startswith('execute:')]:
-                                    if [x for x in session[1][player][4] if x.startswith('execute:')][0].strip('execute:') == lynched_player:
-                                        session[1][player][4].append('win')
-                                        try:
-                                            await _send_role_info(player, sendrole=False)
-                                        except discord.Forbidden:
-                                            pass
-                            lynchers_team = [get_role(x, 'actualteam') for x in session[1] if session[1][x][0] and session[1][x][2] == lynched_player]
-                            await player_deaths({lynched_player : ('lynch', 'wolf' if lynchers_team.count('wolf') > lynchers_team.count('village') else 'village')})
+                                if 'luck_totem2' in session[1][lynched_player][4]:
+                                    lynched_player = misdirect(lynched_player)
+                                if session[6] == 'noreveal':
+                                    lynched_msg += random.choice(lang['lynchednoreveal']).format(get_name(lynched_player))
+                                else:
+                                    lynched_msg += random.choice(lang['lynched']).format(get_name(lynched_player), get_role(lynched_player, 'death'))
+                                await send_lobby(lynched_msg)
+                                if get_role(lynched_player, 'role') == 'jester':
+                                    session[1][lynched_player][4].append('lynched')
+                                for player in [x for x in session[1] if session[1][x][0]]:
+                                    if get_role(player, 'role') == 'executioner' and 'win' not in session[1][player][4] and [x for x in session[1][player][4] if x.startswith('execute:')]:
+                                        if [x for x in session[1][player][4] if x.startswith('execute:')][0].strip('execute:') == lynched_player:
+                                            session[1][player][4].append('win')
+                                            try:
+                                                await _send_role_info(player, sendrole=False)
+                                            except discord.Forbidden:
+                                                pass
+                                lynchers_team = [get_role(x, 'actualteam') for x in session[1] if session[1][x][0] and session[1][x][2] == lynched_player]
+                                await player_deaths({lynched_player : ('lynch', 'wolf' if lynchers_team.count('wolf') > lynchers_team.count('village') else 'village')})
 
-                        if get_role(lynched_player, 'role') == 'fool' and 'revealing_totem' not in session[1][lynched_player][4]:
-                            win_msg = "The fool has been lynched, causing them to win!\n\n" + end_game_stats()
-                            lovers = []
-                            for n in session[1][lynched_player][4]:
-                                if n.startswith('lover:'):
-                                    lover = n.split(':')[1]
-                                    if session[1][lover][0]:
-                                        lovers.append(lover)
+                            if get_role(lynched_player, 'role') == 'fool' and 'revealing_totem' not in session[1][lynched_player][4]:
+                                win_msg = "The fool has been lynched, causing them to win!\n\n" + end_game_stats()
+                                lovers = []
+                                for n in session[1][lynched_player][4]:
+                                    if n.startswith('lover:'):
+                                        lover = n.split(':')[1]
+                                        if session[1][lover][0]:
+                                            lovers.append(lover)
 
-                            await end_game(win_msg, [lynched_player] + (lovers if session[6] == "random" else []) + [x for x in session[1] if get_role(x, "role") == "jester" and "lynched" in session[1][x][4]])
-                            return
+                                await end_game(win_msg, [lynched_player] + (lovers if session[6] == "random" else []) + [x for x in session[1] if get_role(x, "role") == "jester" and "lynched" in session[1][x][4]])
+                                return
                 elif lynched_player == None and win_condition() == None and session[0]:
                     await send_lobby("Not enough votes were cast to lynch a player.")
             else:
