@@ -5295,46 +5295,47 @@ async def game_loop(ses=None):
                         await send_lobby(lynched_msg)
                     else:
                         for lynched_player in lynched_players:
-                            lynched_msg += "\n"
-                            if 'revealing_totem' in session[1][lynched_player][4]:
-                                lynched_msg += 'As the villagers prepare to lynch **{0}**, their totem emits a brilliant flash of light! When the villagers are able to see again, '
-                                lynched_msg += 'they discover that {0} has escaped! The left-behind totem seems to have taken on the shape of a **{1}**.'
-                                if get_role(lynched_player, 'role') == 'amnesiac':
-                                    role = [x.split(':')[1].replace("_", " ") for x in session[1][lynched_player][4] if x.startswith("role:")].pop()
-                                    session[1][lynched_player][1] = role
-                                    session[1][lynched_player][4] = [x for x in session[1][lynched_player][4] if not x.startswith("role:")]
-                                    try:
-                                        await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(lynched_player), "Your totem clears your amnesia and you now fully remember who you are!")
-                                        await _send_role_info(lynched_player)
-                                        if role in WOLFCHAT_ROLES:
-                                            await wolfchat("{0} is now a **{1}**!".format(get_name(lynched_player), role))
-                                    except discord.Exception:
-                                        pass
-                                lynched_msg = lynched_msg.format(get_name(lynched_player), get_role(lynched_player, 'role'))
-                                await send_lobby(lynched_msg)
-                            else:
-                                if 'luck_totem2' in session[1][lynched_player][4]:
-                                    lynched_player = misdirect(lynched_player)
-                                if session[6] == 'noreveal':
-                                    lynched_msg += random.choice(lang['lynchednoreveal']).format(get_name(lynched_player))
+                            if lynched_player in session[1].keys():
+                                lynched_msg += "\n"
+                                if 'revealing_totem' in session[1][lynched_player][4]:
+                                    lynched_msg += 'As the villagers prepare to lynch **{0}**, their totem emits a brilliant flash of light! When the villagers are able to see again, '
+                                    lynched_msg += 'they discover that {0} has escaped! The left-behind totem seems to have taken on the shape of a **{1}**.'
+                                    if get_role(lynched_player, 'role') == 'amnesiac':
+                                        role = [x.split(':')[1].replace("_", " ") for x in session[1][lynched_player][4] if x.startswith("role:")].pop()
+                                        session[1][lynched_player][1] = role
+                                        session[1][lynched_player][4] = [x for x in session[1][lynched_player][4] if not x.startswith("role:")]
+                                        try:
+                                            await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(lynched_player), "Your totem clears your amnesia and you now fully remember who you are!")
+                                            await _send_role_info(lynched_player)
+                                            if role in WOLFCHAT_ROLES:
+                                                await wolfchat("{0} is now a **{1}**!".format(get_name(lynched_player), role))
+                                        except discord.Exception:
+                                            pass
+                                    lynched_msg = lynched_msg.format(get_name(lynched_player), get_role(lynched_player, 'role'))
+                                    await send_lobby(lynched_msg)
                                 else:
-                                    lynched_msg += random.choice(lang['lynched']).format(get_name(lynched_player), get_role(lynched_player, 'death'))
-                                if get_role(lynched_player, 'role') == 'jester':
-                                    session[1][lynched_player][4].append('lynched')
-                                lynchers_team = [get_role(x, 'actualteam') for x in session[1] if session[1][x][0] and session[1][x][2] == lynched_player]
-                                lynch_deaths.update({lynched_player : ('lynch', 'wolf' if lynchers_team.count('wolf') > lynchers_team.count('village') else 'village')})
+                                    if 'luck_totem2' in session[1][lynched_player][4]:
+                                        lynched_player = misdirect(lynched_player)
+                                    if session[6] == 'noreveal':
+                                        lynched_msg += random.choice(lang['lynchednoreveal']).format(get_name(lynched_player))
+                                    else:
+                                        lynched_msg += random.choice(lang['lynched']).format(get_name(lynched_player), get_role(lynched_player, 'death'))
+                                    if get_role(lynched_player, 'role') == 'jester':
+                                        session[1][lynched_player][4].append('lynched')
+                                    lynchers_team = [get_role(x, 'actualteam') for x in session[1] if session[1][x][0] and session[1][x][2] == lynched_player]
+                                    lynch_deaths.update({lynched_player : ('lynch', 'wolf' if lynchers_team.count('wolf') > lynchers_team.count('village') else 'village')})
 
-                            if get_role(lynched_player, 'role') == 'fool' and 'revealing_totem' not in session[1][lynched_player][4]:
-                                win_msg = "The fool has been lynched, causing them to win!\n\n" + end_game_stats()
-                                lovers = []
-                                for n in session[1][lynched_player][4]:
-                                    if n.startswith('lover:'):
-                                        lover = n.split(':')[1]
-                                        if session[1][lover][0]:
-                                            lovers.append(lover)
+                                if get_role(lynched_player, 'role') == 'fool' and 'revealing_totem' not in session[1][lynched_player][4]:
+                                    win_msg = "The fool has been lynched, causing them to win!\n\n" + end_game_stats()
+                                    lovers = []
+                                    for n in session[1][lynched_player][4]:
+                                        if n.startswith('lover:'):
+                                            lover = n.split(':')[1]
+                                            if session[1][lover][0]:
+                                                lovers.append(lover)
 
-                                await end_game(win_msg, [lynched_player] + (lovers if session[6] == "random" else []) + [x for x in session[1] if get_role(x, "role") == "jester" and "lynched" in session[1][x][4]])
-                                return
+                                    await end_game(win_msg, [lynched_player] + (lovers if session[6] == "random" else []) + [x for x in session[1] if get_role(x, "role") == "jester" and "lynched" in session[1][x][4]])
+                                    return
                     await send_lobby(lynched_msg)
                     await player_deaths(lynch_deaths)
                 elif lynched_players == None and win_condition() == None and session[0]:
