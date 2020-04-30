@@ -22,7 +22,7 @@
 		"You cannot start the game until there are at least {0} players."
 	],
 	"notplayingstart": [
-		"You are not playing, so you cannot start the game! Type `!join` to join the game."
+		"You are not playing, so you cannot start the game! Type `{p}join` to join the game."
 	],
 	"notplayingleave": [
 		"You cannot leave a game you are not playing!"
