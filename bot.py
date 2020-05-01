@@ -34,6 +34,8 @@ day_timeout = DEFAULT_DAY_TIMEOUT
 night_warning = DEFAULT_NIGHT_WARNING
 night_timeout = DEFAULT_NIGHT_TIMEOUT
 
+MAX_MESSAGE_LEN = 2000
+
 faftergame = None
 starttime = None
 with open(NOTIFY_FILE, 'a+') as notify_file:
@@ -89,6 +91,8 @@ async def on_ready():
     print('------')
     if starttime:
         await log(1, 'on_ready triggered again!')
+        if PLAYING_MESSAGE:
+            await client.change_presence(status=discord.Status.online, game=discord.Game(name=PLAYING_MESSAGE))
         return
     await log(1, 'on_ready triggered!')
     # [playing : True | False, players : {player id : [alive, role, action, template, other]}, day?, [datetime night, datetime day], [elapsed night, elapsed day], first join time, gamemode]
@@ -652,8 +656,8 @@ async def cmd_role(message, parameters):
                 role_guide = "Role table for gamemode **{}**:\n".format(gamemode)
                 role_guide += "```\n" + " " * (WIDTH + 2)
                 role_guide += ','.join("{}{}".format(' ' * (2 - len(str(x))), x) for x in range(gamemodes[gamemode]['min_players'], gamemodes[gamemode]['max_players'] + 1)) + '\n'
-                role_guide += '\n'.join(role + ' ' * (WIDTH - len(role)) + ": " + repr(\
-                role_dict[role][gamemodes[gamemode]['min_players'] - MIN_PLAYERS:gamemodes[gamemode]['max_players']]) for role in sort_roles(role_dict))
+                role_guide += '\n'.join(role + ' ' * (WIDTH - len(role)) + ": " + repr(
+                    role_dict[role][gamemodes[gamemode]['min_players'] - MIN_PLAYERS:gamemodes[gamemode]['max_players']]) for role in sort_roles(role_dict))
                 role_guide += "\n```"
             elif params[1] == 'guide':
                 # generate role guide
@@ -698,10 +702,7 @@ async def cmd_role(message, parameters):
                 role_guide = "Please choose one of the following: " + ', '.join(['guide', 'table'])
         else:
             role_guide = "Please choose one of the following for the third parameter: {}".format(', '.join(['guide', 'table']))
-        if not len(role_guide)>2000:
-            await reply(message, role_guide)
-        else:
-            pass # temporary until a solution is found
+        await reply(message, role_guide)
     else:
         num_players = int(num_players)
         if num_players in range(gamemodes[gamemode]['min_players'], gamemodes[gamemode]['max_players'] + 1):
@@ -2978,19 +2979,18 @@ def has_privileges(level, message):
     else:
         return False
 
-async def reply(message, text, cleanmessage=True):
-    if cleanmessage:
-        text = text.replace('@', '@\u200b')
-    await client.send_message(message.channel, message.author.mention + ', ' + str(text))
-
 async def send_long_post(channel, post):
-    if len(post) <= 2000:
+    if len(post) <= MAX_MESSAGE_LEN:
         await client.send_message(channel, post)
         return
     else:
-        await client.send_message(channel, post[:2000])
-        await send_long_post(channel, post[2000:])
+        await client.send_message(channel, post[:MAX_MESSAGE_LEN])
+        await send_long_post(channel, post[MAX_MESSAGE_LEN:])
 
+async def reply(message, text, cleanmessage=True):
+    if cleanmessage:
+        text = text.replace('@', '@\u200b')
+    await send_long_post(message.channel, message.author.mention + ', ' + str(text))
 
 async def send_lobby(text):
     for i in range(3):
@@ -3037,8 +3037,8 @@ async def parse_command(commandname, message, parameters):
         else:
             await log(2, 'User ' + message.author.name + ' (' + message.author.id + ') tried to use command ' + commandname + ' with parameters `' + parameters + '` without permissions!')
 
-async def send_long_log_helper(channel, post, depth):
-    max = 1950
+async def send_long_log_helper(channel, post, depth=0):
+    max = MAX_MESSAGE_LEN - 50  # Some breathing room for security
     if len(post) <= max:
         if depth:
             await client.send_message(channel, "[CONTINUED] " + "```py\n" + post[:max])
@@ -3050,7 +3050,7 @@ async def send_long_log_helper(channel, post, depth):
             await client.send_message(channel, "[CONTINUED] " + "```py\n" + post[:max] + "```")
         else:
             await client.send_message(channel, post[:max] + "```")
-        await send_long_log_helper(channel, post[max:], depth + 1)
+        await send_long_log_helper(channel, post[max:])
 
 async def log(loglevel, text):
     # loglevels
