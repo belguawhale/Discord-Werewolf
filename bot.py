@@ -3050,7 +3050,7 @@ async def send_long_log_helper(channel, post, depth=0):
             await client.send_message(channel, "[CONTINUED] " + "```py\n" + post[:max] + "```")
         else:
             await client.send_message(channel, post[:max] + "```")
-        await send_long_log_helper(channel, post[max:])
+        await send_long_log_helper(channel, post[max:], depth+1)
 
 async def log(loglevel, text):
     # loglevels
@@ -3067,7 +3067,7 @@ async def log(loglevel, text):
     with open(LOG_FILE, 'a', encoding='utf-8') as f:
         f.write("[{}] {}\n".format(datetime.now(), logmsg))
     if loglevel >= MIN_LOG_LEVEL:
-        await send_long_log_helper(client.get_channel(DEBUG_CHANNEL), logmsg, 0)
+        await send_long_log_helper(client.get_channel(DEBUG_CHANNEL), logmsg)
 
 def balance_roles(massive_role_list, default_role='villager', num_players=-1):
     if num_players == -1:
