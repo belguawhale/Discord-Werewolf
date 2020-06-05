@@ -1463,25 +1463,28 @@ async def cmd_kill(message, parameters):
                 map(get_name, valid_targets))))
             await log(1, "{0} ({1}) KILL {2} ({3})".format(get_name(message.author.id), message.author.id,
             ' and '.join(map(get_name, valid_targets)), ','.join(valid_targets)))
-        elif get_role(message.author.id, 'role') == 'vengeful ghost' and 'consecrated' not in session[1][message.author.id][4] and 'driven' not in session[1][message.author.id][4]:
-            if session[1][message.author.id][2] != '':
-                await reply(message, "You have already chosen to kill **{}**.".format(get_name(session[1][message.author.id][2])))
-                return
-            player = get_player(parameters)
-            against = 'wolf'
-            if [x for x in session[1][message.author.id][4] if x.startswith("vengeance:")]:
-                against = [x.split(":")[1] for x in session[1][message.author.id][4] if x.startswith("vengeance:")].pop()
-            if player:
-                if player == message.author.id:
+        elif get_role(message.author.id, 'role') == 'vengeful ghost':
+            if 'consecrated' not in session[1][message.author.id][4] and 'driven' not in session[1][message.author.id][4]:
+                if session[1][message.author.id][2] != '':
+                    await reply(message, "You have already chosen to kill **{}**.".format(get_name(session[1][message.author.id][2])))
                     return
-                elif not session[1][player][0]:
-                    await reply(message, "Player **" + get_name(player) + "** is dead!")
-                elif get_role(player, 'actualteam') != against:
-                    await reply(message, "You must target a {}.".format('villager' if against == 'village' else 'wolf'))
-                else:
-                    session[1][message.author.id][2] = player
-                    await reply(message, "You have chosen to kill **" + get_name(player) + "** tonight.")
-                    await log(1, "{0} ({1}) VENGEFUL KILL {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
+                player = get_player(parameters)
+                against = 'wolf'
+                if [x for x in session[1][message.author.id][4] if x.startswith("vengeance:")]:
+                    against = [x.split(":")[1] for x in session[1][message.author.id][4] if x.startswith("vengeance:")].pop()
+                if player:
+                    if player == message.author.id:
+                        return
+                    elif not session[1][player][0]:
+                        await reply(message, "Player **" + get_name(player) + "** is dead!")
+                    elif get_role(player, 'actualteam') != against:
+                        await reply(message, "You must target a {}.".format('villager' if against == 'village' else 'wolf'))
+                    else:
+                        session[1][message.author.id][2] = player
+                        await reply(message, "You have chosen to kill **" + get_name(player) + "** tonight.")
+                        await log(1, "{0} ({1}) VENGEFUL KILL {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
+            elif 'consecrated' in session[1][message.author.id][4]:
+                await reply(message, "You have been consecrated, so you cannot kill tonight.")
 
 @cmd('vote', [0, 0], "```\n{0}vote [<gamemode | player>]\n\nVotes for <gamemode> during the join phase or votes to lynch <player> during the day. If no arguments "
                      "are given, replies with a list of current votes.```", 'v')
@@ -1626,19 +1629,24 @@ async def cmd_retract(message, parameters):
             await reply(message, "You retracted your vote.")
             await log(1, "{0} ({1}) RETRACT VOTE".format(get_name(message.author.id), message.author.id))
         else:
+            # We have a killing role
             if session[1][message.author.id][1] in COMMANDS_FOR_ROLE['kill']:
-                if session[1][message.author.id][1] == ('hunter' or 'vengeful ghost'):
-                    return
-                if not message.channel.is_private:
-                    try:
-                        await client.send_message(message.author, "Please use retract in pm.")
-                    except discord.Forbidden:
-                        pass
-                    return
-                session[1][message.author.id][2] = ''
-                await reply(message, "You retracted your kill.")
-                await wolfchat("**{}** has retracted their kill.".format(get_name(message.author.id)))
-                await log(1, "{0} ({1}) RETRACT KILL".format(get_name(message.author.id), message.author.id))
+                # All killing roles can retract except hunter and vg
+                if session[1][message.author.id][1] not in ['hunter', 'vengeful ghost']:
+                    # Sent in public channel 
+                    if not message.channel.is_private:
+                        try:
+                            await client.send_message(message.author, "Please use retract in pm.")
+                        except discord.Forbidden:
+                            pass
+                        return
+                    # Reset target
+                    session[1][message.author.id][2] = ''
+                    await reply(message, "You retracted your kill.")
+                    # If this killing role is also a wolf chat role, then teammates will be alerted
+                    if session[1][message.author.id][1] in ACTUAL_WOLVES:
+                        await wolfchat("**{}** has retracted their kill.".format(get_name(message.author.id)))
+                    await log(1, "{0} ({1}) RETRACT KILL".format(get_name(message.author.id), message.author.id))
 
 @cmd('abstain', [0, 2], "```\n{0}abstain takes no arguments\n\nRefrain from voting someone today.```", 'abs', 'nl')
 async def cmd_abstain(message, parameters):
@@ -2941,7 +2949,7 @@ async def cmd_guard(message, parameters):
                         session[1][message.author.id][4].append("guarded")
                         await log(1, "{0} ({1}) GUARD SELF".format(get_name(message.author.id), message.author.id))
                     else:
-                        await reply(message, "You cannot guard yourself. Use pass if you do not wish to guard anyone tonight.")
+                        await reply(message, "You cannot guard yourself. Use `pass` if you do not wish to guard anyone tonight.")
                         return
                 else:
                     await reply(message, "You have chosen to guard **{}**.".format(get_name(player)))
@@ -3959,9 +3967,13 @@ async def player_deaths(players_dict): # players_dict = {dead : (reason, kill_te
                     if kill_team != 'bot':
                         foul_dict = {}
                         foul_message = ''
-                        for entranced in [x for x in session[1] if session[1][x][0] and 'entranced' in session[1][x][4] and x not in players_dict]:
-                            foul_message += "As the last remaining succubus dies, a foul curse causes **{0}**, a{1} **{2}** to wither away and die in front of the astonished village.\n".format(get_name(entranced), "n" if get_role(entranced, "death").lower()[0] in ['a', 'e', 'i', 'o', 'u'] else "", get_role(entranced, "death"))
+                        entranced_list = [x for x in session[1] if session[1][x][0] and "entranced" in session[1][x][4] and x not in players_dict]
+                        for entranced in entranced_list:
                             foul_dict[entranced] = ('foul curse', kill_team)
+                        if len(entranced_list) == 1:
+                            foul_message = "As the last remaining succubus dies, a foul curse causes **{}**, a{} **{}** to wither away and die in front of the astonished village.\n".format(get_name(entranced), "n" if get_role(entranced, "death").lower()[0] in ["a", "e", "i", "o", "u"] else "", get_role(entranced, "death"))
+                        elif len(entranced_list) > 1:
+                            foul_message = "As the last remaining succubus dies, a foul curse causes **{}**, and **{}**, a{} **{}** to wither away and die in front of the astonished village.\n".format("**, **".join(get_name(x) + "**, a{} **".format("n" if get_role(x, "death").lower()[0] in ["a", "e", "i", "o", "u"] else "") + get_role(x, 'death') for x in entranced_list[:-1]), get_name(entranced_list[-1]), "n" if get_role(entranced_list[-1], "death").lower()[0] in ["a", "e", "i", "o", "u"] else "", get_role(entranced_list[-1], "death"))
                         if foul_message:
                             await send_lobby(foul_message)
                             await player_deaths(foul_dict)
@@ -4593,9 +4605,12 @@ async def game_loop(ses=None):
                     session[1][hexed][4].append('hex')
 
             # Doomsayer stuff
+            doom_deaths = []
+
             for doomsayer in [x for x in session[1] if get_role(x, 'role') == 'doomsayer' and [a for a in session[1][x][4] if a.startswith('doomdeath:')]]:
                 target = [a.split(':')[1] for a in session[1][doomsayer][4] if a.startswith('doomdeath:')].pop()
                 killed_dict[target] += 1
+                doom_deaths.append(target)
                 session[1][doomsayer][4] = [a for a in session[1][doomsayer][4] if not a.startswith('doomdeath:')]
 
             # Hunter stuff
@@ -4607,10 +4622,13 @@ async def game_loop(ses=None):
                         killed_dict[target] += 100
                         
             # Serial killer stuff
+            sk_deaths = []
+            
             for sk in [x for x in session[1] if get_role(x, 'role') == 'serial killer']:
                 target = session[1][sk][2]
                 if target not in [sk, '']:
                     killed_dict[target] += 1
+                    sk_deaths.append(target)
 
             # Vengeful ghost stuff
             for ghost in [x for x in session[1] if get_role(x, 'role') == 'vengeful ghost' and not session[1][x][0] and [a for a in session[1][x][4] if a.startswith('vengeance:')]]:
@@ -4625,7 +4643,7 @@ async def game_loop(ses=None):
             # Bodyguard stuff
             for bodyguard in [x for x in alive_players if get_role(x, 'role') == 'bodyguard']:
                 target = session[1][bodyguard][2]
-                if target in session[1] and (target in wolf_deaths or 'vg_target' in session[1][target][4]) and not ('protection_totem' in session[1][target][4] or 'blessed' in session[1][target][4] or bodyguard in guarded):
+                if target in session[1] and (target in wolf_deaths or target in sk_deaths or 'vg_target' in session[1][target][4]) and not ('protection_totem' in session[1][target][4] or 'blessed' in session[1][target][4] or bodyguard in guarded):
                     killed_dict[bodyguard] += 1
                     killed_dict[target] -= 1
                     killed_msg += "**{}** sacrificed their life to guard that of another.\n".format(get_name(bodyguard))
@@ -4781,9 +4799,7 @@ async def game_loop(ses=None):
                 for protected in sort_players(protect_totemed):
                     killed_msg += "**{0}** was attacked last night, but their totem emitted a brilliant flash of light, blinding their attacker and allowing them to escape.\n".format(
                                         get_name(protected))
-
-
-
+                    
             if death_totemed:
                 for ded in sort_players(death_totemed):
                     if session[6] == 'noreveal':
@@ -4792,6 +4808,7 @@ async def game_loop(ses=None):
                         killed_msg += "**{0}**'s totem emitted a brilliant flash of light last night. The dead body of **{0}**, a **{1}** was found at the scene.\n".format(
                                         get_name(ded), get_role(ded, 'death'))
                     killed_players.remove(ded)
+
             if revengekill and revengekill in killed_players:
                 # retribution totem
                 killed_players.remove(revengekill)
@@ -4833,7 +4850,7 @@ async def game_loop(ses=None):
 
             killed_dict = {}
             for player in killed_temp:
-                kill_team = "wolf" if player not in gunner_revenge + list(revengekill) + death_totemed and player in wolf_deaths else "village"
+                kill_team = "wolf" if player not in gunner_revenge + list(revengekill) + death_totemed and (player in wolf_deaths or player in doom_deaths) else "village"
                 killed_dict[player] = ("night kill", kill_team)
             if killed_dict:
                 await player_deaths(killed_dict)
@@ -4991,7 +5008,7 @@ async def game_loop(ses=None):
                                             if [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'succubus']:
                                                 succubus = random.choice([x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'succubus'])
                                                 try:
-                                                    await client.send_message(member, "You have become entranced, and are now on **{}**'s team. From this point on, you must vote along with them or risk dying. You cannot win with your own team, but you will win should all alive players become entranced.".format(get_name(succubus)))
+                                                    await client.send_message(member, "You have become entranced, and are now on **{}**'s team. From this point on, you must vote along with them or risk dying. You **cannot win with your own team**, but you will win should all alive players become entranced.".format(get_name(succubus)))
                                                 except discord.Forbidden:
                                                     pass
                                         elif element.startswith('lover:'):
@@ -5555,7 +5572,7 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
          'clone' : ['neutral', 'clones', "You can select someone to clone with `clone <player>`. If that player dies, you become their role. You may only clone someone during the first night."],
          'lycan' : ['neutral', 'lycans', "You are currently on the side of the villagers, but will turn into a wolf instead of dying if you are targeted by the wolves during the night."],
          'time lord' : ['village', 'time lords', "You are a master of time .. but you do not know it. If you are killed, day and night will speed up considerably."],
-         'turncoat' : ['neutral', 'turncoats', "You can change the team you side with every other night. Use `side villagers` or `side wolves` to choose your team."],
+         'turncoat' : ['neutral', 'turncoats', "You can change the team you side with every other night. Use `side villagers` or `side wolves` to choose your team. If you do not wish to switch sides tonight, then you may use `pass`."],
          'serial killer' : ['neutral', 'serial killers', "You may kill one player each night with `kill <player>`. Your objective is to outnumber the rest of town. If there are any other serial killers, then you do not know who they are, but you win together, provided that the serial killer is alive. The wolves are unable to kill you at night. If you do not wish to kill anyone tonight, then you may use `pass`."],
          'executioner' : ['neutral', 'executioners', "At the start of the game, you will receive a target. This target is on the village team and your goal is to have this player lynched, while you are alive. If your target dies not via lynch, then you will become a jester."],
          'hot potato' : ['neutral', 'hot potatoes', "Under no circumstances may you win the game. You may choose to swap identities with someone else by using `choose <player>` at night."]}
