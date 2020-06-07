@@ -489,7 +489,7 @@ async def cmd_start(message, parameters):
     if session[0]:
         return
     if message.author.id not in session[1]:
-        await reply(message, random.choice(lang['notplayingstart']))
+        await reply(message, random.choice(lang['notplayingstart']).format(p=BOT_PREFIX))
         return
     if len(session[1]) < MIN_PLAYERS:
         await reply(message, random.choice(lang['minplayers']).format(MIN_PLAYERS))
