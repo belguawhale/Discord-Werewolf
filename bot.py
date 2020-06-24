@@ -1952,13 +1952,13 @@ async def cmd_notify(message, parameters):
             await reply(message, "You are already in the notify list.")
             return
         notify_me.append(message.author.id)
-        await reply(message, "You will be notified by {}notify.".format(BOT_PREFIX))
+        await reply(message, "You will be notified by `{}notify`.".format(BOT_PREFIX))
     elif parameters in ['false', '-', 'no']:
         if not notify:
             await reply(message, "You are not in the notify list.")
             return
         notify_me.remove(message.author.id)
-        await reply(message, "You will not be notified by {}notify.".format(BOT_PREFIX))
+        await reply(message, "You will not be notified by `{}notify`.".format(BOT_PREFIX))
     else:
         await reply(message, commands['notify'][2].format(BOT_PREFIX))
 
@@ -5445,8 +5445,8 @@ async def game_start_timeout_loop():
     if not session[0] and len(session[1]) > 0:
         session[0] = True
         await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.online)
-        await send_lobby("{0}, the game has taken too long to start and has been cancelled. "
-                          "If you are still here and would like to start a new game, please do `!join` again.".format(PLAYERS_ROLE.mention))
+        await send_lobby("{}, the game has taken too long to start and has been cancelled. "
+                          "If you are still here and would like to start a new game, please do `{}join` again.".format(PLAYERS_ROLE.mention, BOT_PREFIX))
         perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
         perms.send_messages = True
         await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
