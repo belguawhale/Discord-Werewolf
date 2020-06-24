@@ -4231,16 +4231,8 @@ async def game_loop(ses=None):
                 member = client.get_server(WEREWOLF_SERVER).get_member(player)
                 role = get_role(player, 'role')
                 if "silence_totem2" not in session[1][player][4]:
-                    if role in ['shaman', 'crazed shaman', 'wolf shaman'] and session[1][player][0]:
-                        if role == 'shaman':
-                            if session[6] == "mudkip":
-                                session[1][player][2] = random.choice(["pestilence_totem", "death_totem"]) if not night == 1 else "death_totem"
-                            elif session[6] == 'aleatoire':
-                                #protection (40%), death (20%), retribution (20%), silence (10%), desperation (5%), pestilence (5%).
-                                session[1][player][2] = random.choice(["protection_totem"] * 8 + ["death_totem"] * 4 + ["retribution_totem"] * 4 + ["silence_totem"] * 2 + ["desperation_totem"] + ["pestilence_totem"])
-                            else:
-                                session[1][player][2] = random.choice(SHAMAN_TOTEMS)
-                        elif role == 'wolf shaman':
+                    if role in ['crazed shaman', 'wolf shaman'] and session[1][player][0]:
+                        if role == 'wolf shaman':
                             if session[6] == "mudkip":
                                 session[1][player][4].append("totem:{}".format(random.choice(["protection_totem", "misdirection_totem"])))
                             else:
@@ -4253,9 +4245,21 @@ async def game_loop(ses=None):
                     elif role == 'piper':
                         session[1][player][4].append('charm')
                 else:
-                    if role in ['shaman', 'crazed shaman', 'piper'] and session[1][player][0]:
+                    if role in ['crazed shaman', 'piper'] and session[1][player][0]:
                         session[1][player][2] = player
-                if role == 'hunter' and session[1][player][0] and 'hunterbullet' not in session[1][player][4]:
+                if role == 'shaman' and session[1][player][0]:
+                    if session[6] == "mudkip":
+                        session[1][player][2] = random.choice(
+                            ["pestilence_totem", "death_totem"]) if not night == 1 else "death_totem"
+                    elif session[6] == 'aleatoire':
+                        # protection (40%), death (20%), retribution (20%), silence (10%), desperation (5%), pestilence (5%).
+                        session[1][player][2] = random.choice(
+                            ["protection_totem"] * 8 + ["death_totem"] * 4 + ["retribution_totem"] * 4 + [
+                                "silence_totem"] * 2 + ["desperation_totem"] + ["pestilence_totem"])
+                    else:
+                        session[1][player][2] = random.choice(SHAMAN_TOTEMS)
+                    log_msg.append("{} ({}) HAS {}".format(get_name(player), player, session[1][player][2]))
+                elif role == 'hunter' and session[1][player][0] and 'hunterbullet' not in session[1][player][4]:
                     session[1][player][2] = player
                 elif role == 'executioner' and session[1][player][0] and not [x for x in session[1][player][4] if x.startswith('execute:')]:
                     if [x for x in [y for y in session[1] if session[1][y][0]] if get_role(x, 'actualteam') == 'village']:
@@ -4296,7 +4300,7 @@ async def game_loop(ses=None):
                                     'seer', 'oracle', 'harlot', 'hunter', 'augur',
                                     'guardian angel', 'succubus', 'hag', 'warlock', 'bodyguard', 'turncoat', 'serial killer', 'hot potato'] and 'silence_totem2' not in session[1][player][4]:
                             end_night = end_night and (session[1][player][2] != '')
-                        if role in ['shaman', 'crazed shaman']:
+                        if role in ['shaman', 'crazed shaman'] and 'silence_totem2' not in session[1][player][4]:
                             end_night = end_night and (session[1][player][2] in session[1])
                         if role == "wolf shaman":
                             end_night = end_night and not [x for x in session[1][player][4] if x.startswith("totem:")]
