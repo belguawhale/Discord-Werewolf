@@ -3468,14 +3468,16 @@ def end_game_stats():
             role_dict['cursed villager'].append(player)
         if 'gunner' in session[1][player][3]:
             role_dict['gunner'].append(player)
+        if 'sharpshooter' in session[1][player][3]:
+            role_dict['sharpshooter'].append(player)
         if 'assassin' in session[1][player][3]:
             role_dict['assassin'].append(player)
         if 'mayor' in session[1][player][3]:
             role_dict['mayor'].append(player)
-        if 'sharpshooter' in session[1][player][3]:
-            role_dict['sharpshooter'].append(player)
         if 'bishop' in session[1][player][3]:
             role_dict['bishop'].append(player)
+        if 'blessed' in session[1][player][3]:
+            role_dict['blessed villager'].append(player)
 
     for key in sort_roles(role_dict):
         value = sort_players(role_dict[key])
