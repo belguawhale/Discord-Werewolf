@@ -1984,8 +1984,12 @@ async def cmd_entrance(message, parameters):
         await reply(message, "You may only entrance during the night.")
         return
     if session[1][message.author.id][2]:
-        await reply(message, "You are already entrancing **{}** tonight.".format(get_name(session[1][message.author.id][2])))
-        return
+        if session[1][message.author.id][2] == message.author.id:
+            await reply(message, "Your entrance was unsuccessful.")
+            return
+        else:
+            await reply(message, "You are already entrancing **{}** tonight.".format(get_name(session[1][message.author.id][2])))
+            return
     if "silence_totem2" in session[1][message.author.id][4]:
         await reply(message, "You have been silenced, and are unable to use any special powers.")
         return
@@ -2007,48 +2011,58 @@ async def cmd_entrance(message, parameters):
                     elif 'luck_totem2' in session[1][player][4]:
                         player = misdirect(player, alive_players=[x for x in session[1] if session[1][x][0] and x != message.author.id])
                     if 'entranced' not in session[1][player][4]:
-                        await reply(message, "You are entrancing **{}** tonight.".format(get_name(player)))
-                        session[1][message.author.id][2] = player
                         member = client.get_server(WEREWOLF_SERVER).get_member(player)
-                        role = get_role(player, 'role')
-                        templates = get_role(player, 'templates')
-                        session[1][player][4].append('entranced')
-                        succubus_message = "You have become entranced by **{0}**. From this point on, you must vote along with them or risk dying. You **cannot win with your own team**, but you will win should all alive players become entranced."
-                        if role in COMMANDS_FOR_ROLE['kill'] and message.author.id in session[1][player][2]:
-                            session[1][player][2] = ''
-                            succubus_message += " You discover that **{0}** is a succubus and have retracted your kill as a result.\n".format(get_name(message.author.id))
-                        if 'assassin' in templates and 'assassinate:{}'.format(message.author.id) in session[1][player][4]:
-                            session[1][player][4].remove('assassinate:{}'.format(message.author.id))
-                            succubus_message += " You discover that **{0}** is a succubus and must now target someone else.\n".format(get_name(message.author.id))
-                        if role == 'hag' and session[1][player][2] == message.author.id:
-                            succubus_message += " You discover that **{0}** is a succubus and have retracted your hex as a result.\n".format(get_name(message.author.id))
-                            session[1][player][2] = ''
-                            session[1][player][4].remove('lasttarget:{}'.format(message.author.id))
-                        if role == 'piper' and ('tocharm' in session[1][message.author.id][4] or 'charmed' in session[1][message.author.id][4]):
-                            succubus_message += " You discover that **{0}** is a succubus and have retracted your charm as a result.\n".format(get_name(message.author.id))
-                            session[1][message.author.id][4] = [x for x in session[1][message.author.id][4] if x not in ['charmed', 'tocharm']]
-                            session[1][player][4].append('charm')
-                        if role in COMMANDS_FOR_ROLE['give']:
-                            totem = ''
-                            if role == 'wolf shaman' and not [x for x in session[1][player][4] if x.startswith('totem:')] and 'lasttarget:{}'.format(message.author.id) in session[1][player][4]:
-                                totem = [x.split(':')[1] for x in session[1][player][4] if x.startswith('given:')].pop()
-                            elif message.author.id == session[1][player][2]:
-                                totem = [x.split(':')[1] for x in session[1][player][4] if x.startswith('given:')].pop()
-                            if totem not in ["protection_totem", "revealing_totem", "desperation_totem", "influence_totem", "luck_totem", "pestilence_totem", "retribution_totem", '']:
-                                succubus_message += " You discover that **{0}** is a succubus and have retracted your totem as a result."
-                                session[1][message.author.id][4].remove(totem)
-                                session[1][player][4].remove('given:{}'.format(totem))
+                        if 'bishop' in session[1][player][3]:
+                            await reply(message, "The holiness of **{}** deters you from approaching. Your entrance is unsuccessful.".format(get_name(player)))
+                            session[1][message.author.id][2] = message.author.id
+                            if member:
+                                try:
+                                    await client.send_message(member, "You smell the strange scent of a succubus for a fleeting moment. The succubus came near you, but it left you untouched.")
+                                except discord.Forbidden:
+                                    pass
+                            await log(1, "{0} ({1}) FAILED TO ENTRANCE {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
+                        else:
+                            await reply(message, "You are entrancing **{}** tonight.".format(get_name(player)))
+                            session[1][message.author.id][2] = player
+                            role = get_role(player, 'role')
+                            templates = get_role(player, 'templates')
+                            session[1][player][4].append('entranced')
+                            succubus_message = "You have become entranced by **{0}**. From this point on, you must vote along with them or risk dying. You **cannot win with your own team**, but you will win should all alive players become entranced."
+                            if role in COMMANDS_FOR_ROLE['kill'] and message.author.id in session[1][player][2]:
+                                session[1][player][2] = ''
+                                succubus_message += " You discover that **{0}** is a succubus and have retracted your kill as a result.\n".format(get_name(message.author.id))
+                            if 'assassin' in templates and 'assassinate:{}'.format(message.author.id) in session[1][player][4]:
+                                session[1][player][4].remove('assassinate:{}'.format(message.author.id))
+                                succubus_message += " You discover that **{0}** is a succubus and must now target someone else.\n".format(get_name(message.author.id))
+                            if role == 'hag' and session[1][player][2] == message.author.id:
+                                succubus_message += " You discover that **{0}** is a succubus and have retracted your hex as a result.\n".format(get_name(message.author.id))
+                                session[1][player][2] = ''
                                 session[1][player][4].remove('lasttarget:{}'.format(message.author.id))
-                                if role == 'wolf shaman':
-                                    session[1][player][4].append('totem:{}'.format(totem))
-                                else:
-                                    session[1][player][2] == totem
-                        if member:
-                            try:
-                                await client.send_message(member, succubus_message.format(get_name(message.author.id)))
-                            except discord.Forbidden:
-                                pass
-                        await log(1, "{0} ({1}) ENTRANCE {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
+                            if role == 'piper' and ('tocharm' in session[1][message.author.id][4] or 'charmed' in session[1][message.author.id][4]):
+                                succubus_message += " You discover that **{0}** is a succubus and have retracted your charm as a result.\n".format(get_name(message.author.id))
+                                session[1][message.author.id][4] = [x for x in session[1][message.author.id][4] if x not in ['charmed', 'tocharm']]
+                                session[1][player][4].append('charm')
+                            if role in COMMANDS_FOR_ROLE['give']:
+                                totem = ''
+                                if role == 'wolf shaman' and not [x for x in session[1][player][4] if x.startswith('totem:')] and 'lasttarget:{}'.format(message.author.id) in session[1][player][4]:
+                                    totem = [x.split(':')[1] for x in session[1][player][4] if x.startswith('given:')].pop()
+                                elif message.author.id == session[1][player][2]:
+                                    totem = [x.split(':')[1] for x in session[1][player][4] if x.startswith('given:')].pop()
+                                if totem not in ["protection_totem", "revealing_totem", "desperation_totem", "influence_totem", "luck_totem", "pestilence_totem", "retribution_totem", '']:
+                                    succubus_message += " You discover that **{0}** is a succubus and have retracted your totem as a result."
+                                    session[1][message.author.id][4].remove(totem)
+                                    session[1][player][4].remove('given:{}'.format(totem))
+                                    session[1][player][4].remove('lasttarget:{}'.format(message.author.id))
+                                    if role == 'wolf shaman':
+                                        session[1][player][4].append('totem:{}'.format(totem))
+                                    else:
+                                        session[1][player][2] == totem
+                            if member:
+                                try:
+                                    await client.send_message(member, succubus_message.format(get_name(message.author.id)))
+                                except discord.Forbidden:
+                                    pass
+                            await log(1, "{0} ({1}) ENTRANCE {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
                     else:
                         await reply(message, "**{}** is already entranced.".format(get_name(player)))
             else:
@@ -3235,6 +3249,11 @@ async def assign_roles(gamemode):
         if blessed_choices:
             blessed = random.choice(blessed_choices)
             session[1][blessed][3].append('blessed')
+    for i in range(gamemode_roles['bishop'] if 'bishop' in gamemode_roles else 0):
+        bishop_choices = [x for x in session[1] if get_role(x, 'role') != 'succubus' and 'bishop' not in session[1][x][3]]
+        if bishop_choices:
+            bishop = random.choice(bishop_choices)
+            session[1][bishop][3].append('bishop')
     if gamemode == 'belunga':
         for player in session[1]:
             session[1][player][4].append('belunga_totem')
@@ -3455,6 +3474,8 @@ def end_game_stats():
             role_dict['mayor'].append(player)
         if 'sharpshooter' in session[1][player][3]:
             role_dict['sharpshooter'].append(player)
+        if 'bishop' in session[1][player][3]:
+            role_dict['bishop'].append(player)
 
     for key in sort_roles(role_dict):
         value = sort_players(role_dict[key])
@@ -3561,7 +3582,7 @@ def sort_players(players):
 def get_role(player, level):
     # level: {team: reveal team only; actualteam: actual team; seen: what the player is seen as; death: role taking into account cursed and cultist and traitor; actual: actual role}
     # (terminology: role = what you are, template = additional things that can be applied on top of your role)
-    # cursed, gunner, blessed, mayor, assassin are all templates
+    # cursed, gunner, blessed, mayor, assassin, and bishop are all templates
     # so you always have exactly 1 role, but can have 0 or more templates on top of that
     # revealing totem (and similar powers, like detective id) only reveal roles
     if player in session[1]:
@@ -3648,13 +3669,17 @@ def get_roles(gamemode, players):
                     gamemode_roles[random.choice([x for x in ACTUAL_WOLVES if x != 'wolf cub'])] += 1 # ensure at least 1 wolf that can kill
                     for i in range(players - 1):
                         gamemode_roles[random.choice(available_roles)] += 1
-                    gamemode_roles['gunner'] = random.randrange(int(players ** 1.2 / 4))
-                    gamemode_roles['cursed villager'] = random.randrange(int(players ** 1.2 / 3))
+                    gamemode_roles['cursed villager'] = random.randrange(int(players/3))
+                    gamemode_roles['gunner'] = random.randrange(int(players/4))
+                    gamemode_roles['assassin'] = random.randrange(int(players/5))
+                    gamemode_roles['mayor'] = random.randrange(int(players/7))
+                    gamemode_roles['bishop'] = random.randrange(int(players/7))
+                    gamemode_roles['blessed villager'] = random.randrange(int(players/8))
                     teams = {'village' : 0, 'wolf' : 0, 'neutral' : 0}
                     for role in gamemode_roles:
                         if role not in TEMPLATES_ORDERED:
                             teams[roles[role][0]] += gamemode_roles[role]
-                    if teams['wolf'] >= teams['village'] + teams['neutral']:
+                    if teams['wolf'] >= 2/5*players:
                         exit = False
                 for role in dict(gamemode_roles):
                     if gamemode_roles[role] == 0:
@@ -5579,7 +5604,8 @@ roles = {'wolf' : ['wolf', 'wolves', "Your job is to kill all of the villagers. 
          'turncoat' : ['neutral', 'turncoats', "You can change the team you side with every other night. Use `side villagers` or `side wolves` to choose your team. If you do not wish to switch sides tonight, then you may use `pass`."],
          'serial killer' : ['neutral', 'serial killers', "You may kill one player each night with `kill <player>`. Your objective is to outnumber the rest of town. If there are any other serial killers, then you do not know who they are, but you win together, provided that the serial killer is alive. The wolves are unable to kill you at night. If you do not wish to kill anyone tonight, then you may use `pass`."],
          'executioner' : ['neutral', 'executioners', "At the start of the game, you will receive a target. This target is on the village team and your goal is to have this player lynched, while you are alive. If your target dies not via lynch, then you will become a jester."],
-         'hot potato' : ['neutral', 'hot potatoes', "Under no circumstances may you win the game. You may choose to swap identities with someone else by using `choose <player>` at night."]}
+         'hot potato' : ['neutral', 'hot potatoes', "Under no circumstances may you win the game. You may choose to swap identities with someone else by using `choose <player>` at night."],
+         'bishop' : ['template', 'bishops', "Your virtue prevents you from being entranced by the succubus."]}
 
 
 gamemodes = {
@@ -6346,7 +6372,7 @@ gamemodes['belunga']['roles'] = dict(gamemodes['default']['roles'])
 VILLAGE_ROLES_ORDERED = ['seer', 'oracle', 'shaman', 'harlot', 'hunter', 'augur', 'detective', 'matchmaker', 'guardian angel', 'bodyguard', 'priest', 'village drunk', 'mystic', 'mad scientist', 'time lord', 'villager']
 WOLF_ROLES_ORDERED = ['wolf', 'werecrow', 'doomsayer', 'wolf cub', 'werekitten', 'wolf shaman', 'wolf mystic', 'traitor', 'hag', 'sorcerer', 'warlock', 'minion', 'cultist']
 NEUTRAL_ROLES_ORDERED = ['jester', 'crazed shaman', 'monster', 'piper', 'amnesiac', 'fool', 'vengeful ghost', 'succubus', 'clone', 'lycan', 'turncoat', 'serial killer', 'executioner', 'hot potato']
-TEMPLATES_ORDERED = ['cursed villager', 'blessed villager', 'gunner', 'sharpshooter', 'mayor', 'assassin']
+TEMPLATES_ORDERED = ['cursed villager', 'blessed villager', 'gunner', 'sharpshooter', 'mayor', 'assassin', 'bishop']
 totems = {'death_totem' : 'The player who is given this totem will die tonight.',
           'protection_totem': 'The player who is given this totem is protected from dying tonight.',
           'revealing_totem': 'If the player who is given this totem is lynched, their role is revealed to everyone instead of them dying.',
