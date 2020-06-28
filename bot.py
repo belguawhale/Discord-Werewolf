@@ -977,14 +977,18 @@ async def cmd_stats(message, parameters):
                         role_dict[role][0] -= 1
                         role_dict[role][1] -= 1
         
-        #amnesiacs show amnesiac even after turning
-        for player in session[1]:
-            role = get_role(player, 'role')
-            if session[1][player][0] and "amnesiac" in session[1][player][4]:
-                role_dict["amnesiac"][0] += 1
-                role_dict["amnesiac"][1] += 1
+        # after turning, amnesiac/executioner is shown instead of current role
+        for player in [x for x in session[1] if session[1][x][0]]:
+            if "amnesiac" in session[1][player][4] or "executioner" in session[1][player][4]:
+                role = get_role(player, 'role')
                 role_dict[role][0] -= 1
                 role_dict[role][1] -= 1
+                if "amnesiac" in session[1][player][4]:
+                    role_dict["amnesiac"][0] += 1
+                    role_dict["amnesiac"][1] += 1
+                else:
+                    role_dict["executioner"][0] += 1
+                    role_dict["executioner"][1] += 1
 
         reply_msg += "\nCurrent roles: "
         for template in TEMPLATES_ORDERED:
@@ -3809,7 +3813,11 @@ async def player_idle(message):
                 if session[6] == 'noreveal':
                     await send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead.")
                 else:
-                    await send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead. "
+                    if "executioner" in session[1][message.author.id][4]:
+                        await send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead. "
+                                          "The survivors bury the **executioner**.")
+                    else:
+                        await send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead. "
                                           "The survivors bury the **" + get_role(message.author.id, 'death') + '**.')
                 if message.author.id in stasis:
                     stasis[message.author.id] += QUIT_GAME_STASIS
