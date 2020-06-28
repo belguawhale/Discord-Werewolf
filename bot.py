@@ -4878,6 +4878,8 @@ async def game_loop(ses=None):
             if session[0] and win_condition() == None:
                 await send_lobby("Night lasted **{0:02d}:{1:02d}**. The villagers wake up and search the village.\n\n{2}".format(
                                                                                         night_elapsed.seconds // 60, night_elapsed.seconds % 60, killed_msg))
+                for player in session[1]:
+                    session[1][player][4] = [o for o in session[1][player][4] if o != "angry"]
 
             killed_dict = {}
             for player in killed_temp:
@@ -5108,7 +5110,7 @@ async def game_loop(ses=None):
                     for o in other[:]:
                         # hacky way to get specific mechanisms to last 2 nights
                         if o in ['death_totem', 'cursed_totem', 'retribution_totem', 'lycanthropy_totem2',
-                                'deceit_totem2', 'angry', 'silence_totem2', 'luck_totem2', 'misdirection_totem2',
+                                'deceit_totem2', 'silence_totem2', 'luck_totem2', 'misdirection_totem2',
                                 'pestilence_totem2', 'consecrated', 'illness', 'disobey', 'lycanthropy2','sided2']:
                             other.remove(o)
                         elif o.startswith('given:'):
