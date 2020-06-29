@@ -3463,10 +3463,6 @@ def end_game_stats():
         if 'wolf_cub' in session[1][player][4]:
             session[1][player][1] = 'wolf cub'
             session[1][player][4].remove('wolf_cub')
-        if session[1][player][1] == 'jester' and 'executioner' in session[1][player][4]:
-            session[1][player][1] = 'executioner'
-            if 'lynched' in session[1][player][4]:
-                session[1][player][4].append('win')
         role_dict[session[1][player][1]].append(player)
         if 'cursed' in session[1][player][3]:
             role_dict['cursed villager'].append(player)
@@ -3813,12 +3809,8 @@ async def player_idle(message):
                 if session[6] == 'noreveal':
                     await send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead.")
                 else:
-                    if "executioner" in session[1][message.author.id][4]:
-                        await send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead. "
-                                          "The survivors bury the **executioner**.")
-                    else:
-                        await send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead. "
-                                          "The survivors bury the **" + get_role(message.author.id, 'death') + '**.')
+                    await send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead. "
+                                      "The survivors bury the **" + get_role(message.author.id, 'death') + "**.")
                 if message.author.id in stasis:
                     stasis[message.author.id] += QUIT_GAME_STASIS
                 else:
