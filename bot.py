@@ -3364,14 +3364,18 @@ def win_condition():
         win_team = 'pipers'
         win_lore = "Game over! Everyone has fallen victim to the charms of the piper{0}. The piper{0} lead{1} the villagers away from the village, never to return...".format('' if len([x for x in session[1] if get_role(x, 'role') == 'piper']) < 2 else 's', 's' if len([x for x in session[1] if get_role(x, 'role') == 'piper']) < 2 else '')
     elif len([x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'serial killer']) >= len([x for x in session[1] if session[1][x][0]])/2:
-        win_team = 'serial killers'
-        win_lore = "Game over! The serial killer{0} stabbed all those in the village! The serial killer{0} walk{1} off, in the hope to successfully do the same at another location.".format('' if len([x for x in session[1] if get_role(x, 'role') == 'serial killer']) < 2 else 's', 's' if len([x for x in session[1] if get_role(x, 'role') == 'serial killer']) < 2 else '')
+        if [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'monster']:
+            win_team = 'monster'
+            win_lore = "Game over! The serial killer{0} stabbed all those in the village, except the monster{1}, causing the monster{1} to win.".format('s' if len([x for x in session[1] if get_role(x, 'role') == 'serial killer']) > 1 else '', 's' if len([x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'monster']) > 1 else '')
+        else:
+            win_team = 'serial killers'
+            win_lore = "Game over! The serial killer{0} stabbed all those in the village! The serial killer{0} walk{1} off, in the hope to successfully do the same at another location.".format('s' if len([x for x in session[1] if get_role(x, 'role') == 'serial killer']) > 1 else '', '' if len([x for x in session[1] if get_role(x, 'role') == 'serial killer']) > 1 else 's')
     elif teams['village'] + teams['neutral'] <= teams['wolf'] and not (session[6] == 'evilvillage' and teams['village']):
         if session[6] == 'evilvillage':
             if not teams['village']:
                 if [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'monster']:
                     win_team = 'monster'
-                    win_lore = "Game over! All the villagers are dead! As The cultists rejoice, they get destroyed by the monster{0}, causing the monster{0} to win.".format('s' if len([x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'monster']) > 1 else '')
+                    win_lore = "Game over! All the villagers are dead! As the cultists rejoice, they get destroyed by the monster{0}, causing the monster{0} to win.".format('s' if len([x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'monster']) > 1 else '')
                 elif not [x for x in session[1] if session[1][x][0] and get_role(x, 'role') not in ['cultist', 'minion']]:
                     win_team = 'no win'
                     win_lore = "Game over! All the villagers are dead, but the cult needed to sacrifice the wolves to accomplish that. The cult disperses shortly thereafter, and nobody wins."
