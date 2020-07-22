@@ -3288,6 +3288,8 @@ async def end_game(reason, winners=None):
             msg += "The winners are **{}** and **{}**!".format(get_name(winners[0]), get_name(winners[1]))
         else:
             msg += "The winners are **{}**, and **{}**!".format('**, **'.join(map(get_name, winners[:-1])), get_name(winners[-1]))
+    else:
+        msg += "No one wins!"
     await send_lobby(msg)
     await log(1, "WINNERS: {}".format(winners))
 
@@ -3352,8 +3354,8 @@ def win_condition():
                     if lvr not in lovers and session[1][lvr][0]:
                         lovers.append(lvr)
     if len([x for x in session[1] if session[1][x][0]]) == 0:
-        win_lore = 'Everyone died. The town sits abandoned, collecting dust.'
         win_team = 'no win'
+        win_lore = 'Everyone died. The town sits abandoned, collecting dust.'
     elif len(lovers) == len([x for x in session[1] if session[1][x][0]]):
         win_team = 'lovers'
         win_lore = "Game over! The remaining villagers through their inseparable love for each other have agreed to stop all of this senseless violence and coexist in peace forever more. All remaining players win."
