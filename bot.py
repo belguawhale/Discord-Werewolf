@@ -4913,26 +4913,27 @@ async def game_loop(ses=None):
                                 await client.send_message(potato_member, 'You are now a **{}**!'.format(role))
                         except discord.Forbidden:
                             pass
-                        for player in [x for x in session[1] if session[1][x][0]]:
-                            if session[1][player][4]:
-                                member = client.get_server(WEREWOLF_SERVER).get_member(player)
-                                for other in session[1][player][4]:
-                                    if other == 'lover:{}'.format(target):
-                                        session[1][player][4].remove('lover:{}'.format(target))
-                                        session[1][player][4].append('lover:{}'.format(potato))
-                                        try:
-                                            if member:
-                                                await client.send_message(member, 'Your lover had their identity swapped, so you are now in love with **{}**!'.format(get_name(potato)))
-                                        except discord.Forbidden:
-                                            pass
-                                    elif other == 'lover:{}'.format(potato):
-                                        session[1][player][4].remove('lover:{}'.format(potato))
-                                        session[1][player][4].append('lover:{}'.format(target))
-                                        try:
-                                            if member:
-                                                await client.send_message(member, 'Your lover had their identity swapped, so you are now in love with **{}**!'.format(get_name(target)))
-                                        except discord.Forbidden:
-                                            pass
+                        for player in [x for x in session[1] if session[1][x][0] and session[1][x][4]]:
+                            new_other = []
+                            member = client.get_server(WEREWOLF_SERVER).get_member(player)
+                            for element in session[1][player][4]:
+                                if element == 'lover:{}'.format(target):
+                                    new_other.append('lover:{}'.format(potato))
+                                    try:
+                                        if member:
+                                            await client.send_message(member, 'Your lover had their identity swapped, so you are now in love with **{}**!'.format(get_name(potato)))
+                                    except discord.Forbidden:
+                                        pass
+                                elif element == 'lover:{}'.format(potato):
+                                    new_other.append('lover:{}'.format(target))
+                                    try:
+                                        if member:
+                                            await client.send_message(member, 'Your lover had their identity swapped, so you are now in love with **{}**!'.format(get_name(target)))
+                                    except discord.Forbidden:
+                                        pass
+                                else:
+                                    new_other.append(element)
+                            session[1][player][4] = new_other
                         member = client.get_server(WEREWOLF_SERVER).get_member(potato)
                         if member:
                             if role == 'hunter':
