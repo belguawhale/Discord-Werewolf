@@ -1,2 +1,2 @@
 aiohttp
-discord.py==0.16.12
+git+https://github.com/Picowchew/discord.py.git
