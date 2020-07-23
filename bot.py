@@ -735,7 +735,7 @@ async def _send_role_info(player, sendrole=True):
                         num_kills = session[1][player][4].count('angry')
                         msg.append("You are **angry** tonight, and may kill {} targets by using `kill {}`.\n".format(
                             num_kills + 1, ' AND '.join('player' + str(x + 1) for x in range(num_kills + 1))))
-                if roles[role][0] == 'wolf' and role != 'cultist' and (role != 'minion' or str(session[4][1]) == "0:00:00"):
+                if roles[role][0] == 'wolf' and role != 'cultist' and (role != 'minion' or str(session[4][1]) == "0:00:00") or role == 'minion' and sendrole:
                     living_players_string = []
                     for plr in living_players:
                         temprole = get_role(plr, 'role')
@@ -851,7 +851,7 @@ async def _send_role_info(player, sendrole=True):
                         msg.append("You are an **assassin**, and wish to spread chaos. Type `target <player>` to make them your target. If you die, you take them with you, but if they die, you may choose another target.\nLiving players: ```basic\n" + '\n'.join(living_players_string) + '\n```')
                 if role == 'matchmaker' and sendrole:
                     msg.append("Living players: ```basic\n" + '\n'.join(living_players_string) + '\n```')
-                if role == 'minion' and str(session[4][1]) == "0:00:00":
+                if role == 'minion' and (str(session[4][1]) == "0:00:00" or sendrole):
                     msg.append("Living players: ```basic\n" + '\n'.join(living_players_string) + '\n```')
                 if msg:
                     await client.send_message(member, '\n'.join(msg))
@@ -3955,7 +3955,7 @@ async def player_deaths(players_dict): # players_dict = {dead : (reason, kill_te
                     if not session[1][cloning][0]:
                         if role == "amnesiac":
                             role = [x.split(':')[1].replace("_", " ") for x in session[1][player][4] if x.startswith("role:")].pop()
-                        if role == "priest" and bless in session[1][player][4]:
+                        if role == "priest" and "bless" in session[1][player][4]:
                             session[1][clone][4].append("bless")
                         elif role == "hunter" and "hunterbullet" in session[1][player][4]:
                             session[1][clone][4].append("hunterbullet")
@@ -3964,10 +3964,10 @@ async def player_deaths(players_dict): # players_dict = {dead : (reason, kill_te
                         elif role == "succubus"  and "entranced" in session[1][clone][4]:
                             session[1][clone][4].remove("entranced")
                         elif role == "executioner":
-                            if 'win' in session[1][player][4]:
-                                session[1][clone][4].append('win')
                             if [x for x in session[1][player][4] if x.startswith('execute:')]:
                                 session[1][clone][4].append([x for x in session[1][player][4] if x.startswith('execute:')][0])
+                                if 'win' in session[1][player][4]:
+                                    session[1][clone][4].append('win')
                             else:
                                 if [x for x in [y for y in session[1] if session[1][y][0]] if get_role(x, 'actualteam') == 'village']:
                                     session[1][clone][4].append('execute:{}'.format(random.choice([x for x in [y for y in session[1] if session[1][y][0]] if get_role(x, 'actualteam') == 'village'])))
@@ -3979,19 +3979,28 @@ async def player_deaths(players_dict): # players_dict = {dead : (reason, kill_te
                         session[1][clone][1] = role
                         if member:
                             try:
-                                await client.send_message(member, "You have cloned your target and are now a **{0}**.".format(role))
+                                await client.send_message(member, "You have cloned your target and are now a **{0}**.\nYour role is **{0}**. {1}\n".format(role, roles[role][2]))
                                 if role == 'executioner':
-                                    try:
-                                        await _send_role_info(clone, sendrole=False)
-                                    except discord.Forbidden:
-                                        pass
+                                    exe_target = [x for x in session[1][clone][4] if x.startswith('execute:')][0].strip('execute:')
+                                    if 'win' in session[1][clone][4]:
+                                        await client.send_message(member, 'Your target was **{}**. This player was lynched, so you won.'.format(get_name(exe_target)))
+                                    else:
+                                        await client.send_message(member, 'Your target for lynch is **{}**.'.format(get_name(exe_target)))
+                                elif role == "minion":
+                                    living_players_string = []
+                                    for plr in [x for x in session[1] if session[1][x][0]]:
+                                        temprole = get_role(plr, 'role')
+                                        role_string = []
+                                        if roles[temprole][0] == 'wolf' and temprole not in ['minion', 'cultist']:
+                                            role_string.append(temprole)
+                                        living_players_string.append("{} ({}){}".format(get_name(plr), plr,
+                                        ' ({})'.format(' '.join(role_string)) if role_string else ''))
+                                    await client.send_message(member, 'Living players: ```basic\n' + '\n'.join(living_players_string) + '\n```')
                             except discord.Forbidden:
                                 pass
                         if role in WOLFCHAT_ROLES:
                             await wolfchat("{0} is now a **{1}**!".format(get_name(clone), role))
-                        elif role == "minion":
-                           await _send_role_info(clone)
-                       
+
                 if get_role(player, 'role') ==  'succubus' and not [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'succubus']:
                     if kill_team != 'bot':
                         foul_dict = {}
@@ -4897,10 +4906,10 @@ async def game_loop(ses=None):
                         try:
                             target_member = client.get_server(WEREWOLF_SERVER).get_member(target)
                             if target_member:
-                                await client.send_message(target_member, 'You are now a **hot potato**!')
+                                await client.send_message(target_member, 'You are now a **hot potato**!\nYour role is **hot potato**. {}\n'.format(roles['hot potato'][2]))
                             potato_member = client.get_server(WEREWOLF_SERVER).get_member(potato)
                             if potato_member:
-                                await client.send_message(potato_member, 'You are now a **{}**!'.format(role))
+                                await client.send_message(potato_member, 'You are now a **{0}**!\nYour role is **{0}**. {1}\n'.format(role, roles[role][2]))
                         except discord.Forbidden:
                             pass
                         for player in [x for x in session[1] if session[1][x][0] and session[1][x][4]]:
@@ -4926,118 +4935,75 @@ async def game_loop(ses=None):
                             session[1][player][4] = new_other
                         member = client.get_server(WEREWOLF_SERVER).get_member(potato)
                         if member:
-                            if role == 'hunter':
-                                if 'hunterbullet' in session[1][potato][4]:
-                                    try:
+                            try:
+                                if role == 'hunter':
+                                    if 'hunterbullet' in session[1][potato][4]:
                                         await client.send_message(member, 'You have **not** shot anyone yet.')
-                                    except discord.Forbidden:
-                                        pass
-                                else:
-                                    try:
-                                        await client.send_message(member, 'You have **already** shot someone this game.')
-                                    except discord.Forbidden:
-                                        pass                                    
-                            elif role == 'priest':
-                                if 'bless' in session[1][potato][4]:
-                                    try:
+                                    else:
+                                        await client.send_message(member, 'You have **already** shot someone this game.')                                  
+                                elif role == 'priest':
+                                    if 'bless' in session[1][potato][4]:
                                         await client.send_message(member, 'You have **not** blessed anyone yet.')
-                                    except discord.Forbidden:
-                                        pass
-                                else:
-                                    try:
+                                    else:
                                         await client.send_message(member, 'You have **already** blessed someone this game.')
-                                    except discord.Forbidden:
-                                        pass
-                            elif role == 'clone':
-                                if session[1][potato][4]:
+                                elif role == 'clone' and session[1][potato][4]:
                                     if [x for x in session[1][potato][4] if x.startswith('clone:')]:
-                                        try:
-                                            await client.send_message(member, "You are cloning **{}**. If they die you will take their role.".format(get_name([x for x in session[1][potato][4] if x.startswith('clone:')][0].strip('clone:'))))
-                                        except discord.Forbidden:
-                                            pass
-                            elif role == 'turncoat':
-                                if 'side:villagers' in session[1][potato][4]:
-                                    try:
+                                        await client.send_message(member, "You are cloning **{}**. If they die you will take their role.".format(get_name([x for x in session[1][potato][4] if x.startswith('clone:')][0].strip('clone:'))))
+                                elif role == 'turncoat':
+                                    if 'side:villagers' in session[1][potato][4]:
                                         await client.send_message(member, 'You are currently siding with the village.')
-                                    except discord.Forbidden:
-                                        pass
-                                elif 'side:wolves' in session[1][potato][4]:
-                                    try:
+                                    elif 'side:wolves' in session[1][potato][4]:
                                         await client.send_message(member, 'You are currently siding with the wolves.')
-                                    except discord.Forbidden:
-                                        pass
-                                if 'sided2' in session[1][potato][4]:
-                                    try:
+                                    if 'sided2' in session[1][potato][4]:
                                         await client.send_message(member, 'You will be able to switch sides in two nights.')
-                                    except discord.Forbidden:
-                                        pass
-                                else:
-                                    try:
+                                    else:
                                         await client.send_message(member, 'You will be able to switch sides during the upcoming night.')
-                                    except discord.Forbidden:
-                                        pass
-                            elif role == 'executioner':
-                                if [x for x in session[1][potato][4] if x.startswith('execute:')]:
-                                    exe_target = [x for x in session[1][potato][4] if x.startswith('execute:')][0].strip('execute:')
-                                    if 'win' in session[1][potato][4]:
-                                        try:
+                                elif role == 'executioner':
+                                    if [x for x in session[1][potato][4] if x.startswith('execute:')]:
+                                        exe_target = [x for x in session[1][potato][4] if x.startswith('execute:')][0].strip('execute:')
+                                        if 'win' in session[1][potato][4]:
                                             await client.send_message(member, 'Your target was **{}**. This player was lynched, so you won.'.format(get_name(exe_target)))
-                                        except discord.Forbidden:
-                                            pass
-                                    else:
-                                        try:
+                                        else:
                                             await client.send_message(member, 'Your target for lynch is **{}**.'.format(get_name(exe_target)))
-                                        except discord.Forbidden:
-                                            pass
-                                else:
-                                    if [x for x in [y for y in session[1] if session[1][y][0]] if get_role(x, 'actualteam') == 'village']:
-                                        exe_target = random.choice([x for x in [y for y in session[1] if session[1][y][0]] if get_role(x, 'actualteam') == 'village'])
-                                        session[1][potato][4].append('execute:{}'.format(exe_target))
-                                        try:
-                                            await client.send_message(member, 'Your target for lynch is **{}**.'.format(get_name(exe_target)))
-                                        except discord.Forbidden:
-                                            pass
                                     else:
-                                        session[1][potato][1] = 'jester'
-                                        session[1][potato][4].append('executioner')
-                                        try:
-                                            await client.send_message(member, 'There are no available targets. You have now become a **jester**.')
-                                        except discord.Forbidden:
-                                            pass
+                                        if [x for x in [y for y in session[1] if session[1][y][0]] if get_role(x, 'actualteam') == 'village']:
+                                            exe_target = random.choice([x for x in [y for y in session[1] if session[1][y][0]] if get_role(x, 'actualteam') == 'village'])
+                                            session[1][potato][4].append('execute:{}'.format(exe_target))
+                                            await client.send_message(member, 'Your target for lynch is **{}**.'.format(get_name(exe_target)))
+                                        else:
+                                            session[1][potato][1] = 'jester'
+                                            session[1][potato][4].append('executioner')
+                                            await client.send_message(member, 'There are no available targets. You have now become a **jester**.\nYour role is **jester**. {}\n'.format(roles['jester'][2]))
+                                elif role == 'minion':
+                                    living_players_string = []
+                                    for plr in [x for x in session[1] if session[1][x][0]]:
+                                        temprole = get_role(plr, 'role')
+                                        role_string = []
+                                        if roles[temprole][0] == 'wolf' and temprole not in ['minion', 'cultist']:
+                                            role_string.append(temprole)
+                                        living_players_string.append("{} ({}){}".format(get_name(plr), plr,
+                                        ' ({})'.format(' '.join(role_string)) if role_string else ''))
+                                    await client.send_message(member, 'Living players: ```basic\n' + '\n'.join(living_players_string) + '\n```')
+                            except discord.Forbidden:
+                                pass
                         for player in [potato, target]:
                             member = client.get_server(WEREWOLF_SERVER).get_member(player)
                             if member:
-                                if 'gunner' in session[1][player][3]:
-                                    try:
+                                try:
+                                    if 'gunner' in session[1][player][3]:
                                         await client.send_message(member, 'You have a gun and **{}** bullet{}. Use the command `{}role gunner` for more information.'.format(session[1][player][4].count('bullet'), '' if session[1][player][4].count('bullet') == 1 else 's', BOT_PREFIX))
-                                    except discord.Forbidden:
-                                        pass
-                                if 'sharpshooter' in session[1][player][3]:
-                                    try:
+                                    if 'sharpshooter' in session[1][player][3]:
                                         await client.send_message(member, 'You have a gun and **{}** bullet{}. Use the command `{}role sharpshooter` for more information.'.format(session[1][player][4].count('bullet'), '' if session[1][player][4].count('bullet') == 1 else 's', BOT_PREFIX))
-                                    except discord.Forbidden:
-                                        pass
-                                if 'assassin' in session[1][player][3]:
-                                    if [x for x in session[1][player][4] if x.startswith('assassinate:')]:
-                                        assassinate = [x for x in session[1][player][4] if x.startswith('assassinate:')][0].strip('assassinate:')
-                                        try:
-                                            await client.send_message(member, 'Your target is **{0}**. Use the command `{1}role assassin` for more information.'.format(get_name(assassinate), BOT_PREFIX))
-                                        except discord.Forbidden:
-                                            pass
-                                if session[1][player][4]:
-                                    for element in session[1][player][4]:
-                                        if element == 'entranced':
-                                            if [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'succubus']:
-                                                succubus = random.choice([x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'succubus'])
-                                                try:
-                                                    await client.send_message(member, "You have become entranced, and are now on **{}**'s team. From this point on, you must vote along with them or risk dying. You **cannot win with your own team**, but you will win should all alive players become entranced.".format(get_name(succubus)))
-                                                except discord.Forbidden:
-                                                    pass
-                                        elif element.startswith('lover:'):
-                                            try:
+                                    if session[1][player][4]:
+                                        if 'assassin' in session[1][player][3] and [x for x in session[1][player][4] if x.startswith('assassinate:')]:
+                                            await client.send_message(member, 'Your target is **{0}**. Use the command `{1}role assassin` for more information.'.format(get_name([x for x in session[1][player][4] if x.startswith('assassinate:')][0].strip('assassinate:')), BOT_PREFIX))
+                                        for element in session[1][player][4]:
+                                            if element == 'entranced' and [x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'succubus']:
+                                                await client.send_message(member, "You have become entranced, and are now on **{}**'s team. From this point on, you must vote along with them or risk dying. You **cannot win with your own team**, but you will win should all alive players become entranced.".format(get_name(random.choice([x for x in session[1] if session[1][x][0] and get_role(x, 'role') == 'succubus']))))
+                                            elif element.startswith('lover:'):
                                                 await client.send_message(member, 'You are in love with **{}**. If that player dies for any reason, the pain will be too much for you to bear and you will commit suicide.'.format(get_name(element.strip('lover:'))))
-                                            except discord.Forbidden:
-                                                pass
+                                except discord.Forbidden:
+                                    pass
                         if role in WOLFCHAT_ROLES:
                             try:
                                 await wolfchat('**{0}** has replaced **{1}** as a **{2}**!'.format(get_name(potato), get_name(target), role))
