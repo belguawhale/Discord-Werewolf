@@ -5296,14 +5296,13 @@ async def game_loop(ses=None):
             else:
                 lynched_players = []
                 warn = False
-                totem_dict = {} # For impatience and pacifism
+                totem_dict = {} # For impatience and pacifism, which are not found in mudkip
                 # DAY LOOP
                 while win_condition() == None and session[2] and not lynched_players and session[0]:
                     for player in [x for x in session[1]]:
-                        totem_dict[player] = session[1][player][4].count('impatience_totem') - session[1][player][4].count('pacifism_totem')
+                        totem_dict[player] = 0
                     vote_dict = get_votes(totem_dict)
                     max_votes = max([vote_dict[x] for x in vote_dict])
-                    max_voted = []
                     if vote_dict['abstain'] >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) / 2:
                         lynched_players = 'abstain'
                     elif max_votes >= len([x for x in session[1] if session[1][x][0] and 'injured' not in session[1][x][4]]) // 2 + 1 or not [x for x in session[1] if not session[1][x][2] and session[1][x][0]]:
@@ -5337,57 +5336,18 @@ async def game_loop(ses=None):
                 lynch_deaths = {}
                 if lynched_players and win_condition() == None and session[0]:
                     if lynched_players == 'abstain':
-                        for player in [x for x in totem_dict if session[1][x][0] and totem_dict[x] < 0]:
-                            lynched_msg += "**{}** meekly votes to not lynch anyone today.\n".format(get_name(player))
                         lynched_msg += "The village has agreed to not lynch anyone today."
-                        await send_lobby(lynched_msg)
                     else:
                         for lynched_player in lynched_players:
                             if lynched_player in session[1].keys():
                                 lynched_msg += "\n"
-                                if 'revealing_totem' in session[1][lynched_player][4]:
-                                    lynched_msg += 'As the villagers prepare to lynch **{0}**, their totem emits a brilliant flash of light! When the villagers are able to see again, '
-                                    lynched_msg += 'they discover that {0} has escaped! The left-behind totem seems to have taken on the shape of a **{1}**.'
-                                    if get_role(lynched_player, 'role') == 'amnesiac':
-                                        role = [x.split(':')[1].replace("_", " ") for x in session[1][lynched_player][4] if x.startswith("role:")].pop()
-                                        session[1][lynched_player][1] = role
-                                        session[1][lynched_player][4] = [x for x in session[1][lynched_player][4] if not x.startswith("role:")]
-                                        try:
-                                            await client.send_message(client.get_server(WEREWOLF_SERVER).get_member(lynched_player), "Your totem clears your amnesia and you now fully remember who you are!")
-                                            await _send_role_info(lynched_player)
-                                            if role in WOLFCHAT_ROLES:
-                                                await wolfchat("{0} is now a **{1}**!".format(get_name(lynched_player), role))
-                                        except discord.Exception:
-                                            pass
-                                    lynched_msg = lynched_msg.format(get_name(lynched_player), get_role(lynched_player, 'role'))
-                                    await send_lobby(lynched_msg)
-                                else:
-                                    if 'luck_totem2' in session[1][lynched_player][4]:
-                                        lynched_player = misdirect(lynched_player)
-                                    if session[6] == 'noreveal':
-                                        lynched_msg += random.choice(lang['lynchednoreveal']).format(get_name(lynched_player))
-                                    else:
-                                        lynched_msg += random.choice(lang['lynched']).format(get_name(lynched_player), get_role(lynched_player, 'death'))
-                                    if get_role(lynched_player, 'role') == 'jester':
-                                        session[1][lynched_player][4].append('lynched')
-                                    lynchers_team = [get_role(x, 'actualteam') for x in session[1] if session[1][x][0] and session[1][x][2] == lynched_player]
-                                    lynch_deaths.update({lynched_player : ('lynch', 'wolf' if lynchers_team.count('wolf') > lynchers_team.count('village') else 'village')})
-
-                                if get_role(lynched_player, 'role') == 'fool' and 'revealing_totem' not in session[1][lynched_player][4]:
-                                    win_msg = "The fool has been lynched, causing them to win!\n\n" + end_game_stats()
-                                    lovers = []
-                                    for n in session[1][lynched_player][4]:
-                                        if n.startswith('lover:'):
-                                            lover = n.split(':')[1]
-                                            if session[1][lover][0]:
-                                                lovers.append(lover)
-
-                                    await end_game(win_msg, [lynched_player] + (lovers if session[6] == "random" else []) + [x for x in session[1] if get_role(x, "role") == "jester" and "lynched" in session[1][x][4]])
-                                    return
+                                lynched_msg += random.choice(lang['lynched']).format(get_name(lynched_player), get_role(lynched_player, 'death'))
+                                if get_role(lynched_player, 'role') == 'jester':
+                                    session[1][lynched_player][4].append('lynched')
+                                lynchers_team = [get_role(x, 'actualteam') for x in session[1] if session[1][x][0] and session[1][x][2] == lynched_player]
+                                lynch_deaths.update({lynched_player : ('lynch', 'wolf' if lynchers_team.count('wolf') > lynchers_team.count('village') else 'village')})
                     await send_lobby(lynched_msg)
                     await player_deaths(lynch_deaths)
-                elif lynched_players == None and win_condition() == None and session[0]:
-                    await send_lobby("Not enough votes were cast to lynch a player.")
             # BETWEEN DAY AND NIGHT
             session[2] = False
             night += 1
