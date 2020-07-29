@@ -977,18 +977,14 @@ async def cmd_stats(message, parameters):
                         role_dict[role][0] -= 1
                         role_dict[role][1] -= 1
         
-        # after turning, amnesiac/executioner is shown instead of current role
-        for player in [x for x in session[1] if session[1][x][0]]:
-            if "amnesiac" in session[1][player][4] or "executioner" in session[1][player][4]:
-                role = get_role(player, 'role')
+        #amnesiacs show amnesiac even after turning
+        for player in session[1]:
+            role = get_role(player, 'role')
+            if session[1][player][0] and "amnesiac" in session[1][player][4]:
+                role_dict["amnesiac"][0] += 1
+                role_dict["amnesiac"][1] += 1
                 role_dict[role][0] -= 1
                 role_dict[role][1] -= 1
-                if "amnesiac" in session[1][player][4]:
-                    role_dict["amnesiac"][0] += 1
-                    role_dict["amnesiac"][1] += 1
-                else:
-                    role_dict["executioner"][0] += 1
-                    role_dict["executioner"][1] += 1
 
         reply_msg += "\nCurrent roles: "
         for template in TEMPLATES_ORDERED:
@@ -3142,6 +3138,7 @@ def balance_roles(massive_role_list, default_role='villager', num_players=-1):
 
 async def assign_roles(gamemode):
     massive_role_list = []
+    roles_gamemode_template_list = []
     gamemode_roles = get_roles(gamemode, len(session[1]))
 
     if not gamemode_roles:
@@ -3151,8 +3148,10 @@ async def assign_roles(gamemode):
 
     # Generate list of roles
 
-    for role in gamemode_roles:
-        if role in roles and role not in TEMPLATES_ORDERED:
+    for role in [x for x in gamemode_roles if x in roles]:
+        if role in TEMPLATES_ORDERED and session[6].startswith('roles'):
+            roles_gamemode_template_list += [role] * gamemode_roles[role]
+        elif role not in TEMPLATES_ORDERED:
             massive_role_list += [role] * gamemode_roles[role]
 
     massive_role_list, debugmessage = balance_roles(massive_role_list)
@@ -3160,7 +3159,7 @@ async def assign_roles(gamemode):
         await log(2, debugmessage)
 
     if session[6].startswith('roles'):
-        session[7] = dict((x, massive_role_list.count(x)) for x in roles if x in massive_role_list)
+        session[7] = dict(dict((x, massive_role_list.count(x)) for x in roles if x in massive_role_list), **dict((y, roles_gamemode_template_list.count(y)) for y in TEMPLATES_ORDERED if y in roles_gamemode_template_list))
     else:
         session[7] = dict(gamemode_roles)
 
@@ -3463,6 +3462,10 @@ def end_game_stats():
         if 'wolf_cub' in session[1][player][4]:
             session[1][player][1] = 'wolf cub'
             session[1][player][4].remove('wolf_cub')
+        if session[1][player][1] == 'jester' and 'executioner' in session[1][player][4]:
+            session[1][player][1] = 'executioner'
+            if 'lynched' in session[1][player][4]:
+                session[1][player][4].append('win')
         role_dict[session[1][player][1]].append(player)
         if 'cursed' in session[1][player][3]:
             role_dict['cursed villager'].append(player)
@@ -3810,7 +3813,7 @@ async def player_idle(message):
                     await send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead.")
                 else:
                     await send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead. "
-                                      "The survivors bury the **" + get_role(message.author.id, 'death') + "**.")
+                                          "The survivors bury the **" + get_role(message.author.id, 'death') + '**.')
                 if message.author.id in stasis:
                     stasis[message.author.id] += QUIT_GAME_STASIS
                 else:
