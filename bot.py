@@ -1483,6 +1483,8 @@ async def cmd_kill(message, parameters):
                         session[1][message.author.id][2] = player
                         await reply(message, "You have chosen to kill **" + get_name(player) + "** tonight.")
                         await log(1, "{0} ({1}) VENGEFUL KILL {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
+                else:
+                    await reply(message, "Could not find player " + parameters)
             elif 'consecrated' in session[1][message.author.id][4]:
                 await reply(message, "You have been consecrated, so you cannot kill tonight.")
 
