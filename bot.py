@@ -4336,6 +4336,8 @@ async def game_loop(ses=None):
                                     'seer', 'oracle', 'harlot', 'hunter', 'augur',
                                     'guardian angel', 'succubus', 'hag', 'warlock', 'bodyguard', 'turncoat', 'serial killer', 'hot potato'] and 'silence_totem2' not in session[1][player][4]:
                             end_night = end_night and (session[1][player][2] != '')
+                            if role == 'werecrow':
+                                end_night = end_night and 'observe' in session[1][player][4]
                         if role in ['shaman', 'crazed shaman'] and 'silence_totem2' not in session[1][player][4]:
                             end_night = end_night and (session[1][player][2] in session[1])
                         if role == "wolf shaman":
