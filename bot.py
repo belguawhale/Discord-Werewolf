@@ -21,6 +21,8 @@ session = [False, OrderedDict(), False, [0, 0], [timedelta(0), timedelta(0)], 0,
 PLAYERS_ROLE = None
 ADMINS_ROLE = None
 WEREWOLF_NOTIFY_ROLE = None
+first_notify = True
+notify_previous = datetime.now()
 ratelimit_dict = {}
 pingif_dict = {}
 notify_me = []
@@ -1942,13 +1944,32 @@ async def cmd_online(message, parameters):
 
 @cmd('notify', [0, 0], "```\n{0}notify [<true|false>]\n\nNotifies all online users who want to be notified, or adds/removes you from the notify list.```")
 async def cmd_notify(message, parameters):
+    global first_notify
+    global notify_previous
     if session[0]:
         return
     notify = message.author.id in notify_me
     if parameters == '':
-        online = ["<@{}>".format(x) for x in notify_me if is_online(x) and x not in session[1] and\
-        (x in stasis and stasis[x] == 0 or x not in stasis)]
-        await reply(message, "PING! {}".format(''.join(online)), cleanmessage=False)
+        if message.author.id in stasis and stasis[message.author.id] == 0 or message.author.id not in stasis:
+            online = ["<@{}>".format(x) for x in notify_me if x != message.author.id and is_online(x) and x not in session[1] and (x in stasis and stasis[x] == 0 or x not in stasis)]
+            if first_notify:
+                first_notify = False
+                notify_previous = datetime.now()
+                await reply(message, "PING! {}".format(''.join(online)), cleanmessage=False)
+            else:
+                notify_current = datetime.now()
+                notify_difference = (notify_current - notify_previous).total_seconds()
+                if notify_difference >= NOTIFY_COOLDOWN:
+                    notify_previous = notify_current
+                    await reply(message, "PING! {}".format(''.join(online)), cleanmessage=False)
+                else:
+                    time_remaining = int(NOTIFY_COOLDOWN - notify_difference)
+                    if time_remaining < 1:
+                        time_remaining = 1
+                    minutes, seconds = divmod(time_remaining, 60)
+                    await reply(message, "Please wait at least another{}{}{}.".format((" {} minute{}".format(minutes, "s" if minutes > 1 else "")) if minutes > 0 else "", " and" if minutes != 0 and seconds != 0 else "", (" {} second{}".format(seconds, "s" if seconds > 1 else "")) if seconds > 0 else ""))
+        else:
+            await reply(message, "You have stasis, so you cannot notify others.")
     elif parameters in ['true', '+', 'yes']:
         if notify:
             await reply(message, "You are already in the notify list.")
