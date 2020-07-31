@@ -1967,7 +1967,7 @@ async def cmd_notify(message, parameters):
                     if time_remaining < 1:
                         time_remaining = 1
                     minutes, seconds = divmod(time_remaining, 60)
-                    await reply(message, "Please wait at least another{}{}{}.".format((" {} minute{}".format(minutes, "s" if minutes > 1 else "")) if minutes > 0 else "", " and" if minutes != 0 and seconds != 0 else "", (" {} second{}".format(seconds, "s" if seconds > 1 else "")) if seconds > 0 else ""))
+                    await reply(message, "Please wait at least another {}.".format(quantified_items_grammatical_list(OrderedDict([("minute", minutes), ("second", seconds)]))))
         else:
             await reply(message, "You have stasis, so you cannot notify others.")
     elif parameters in ['true', '+', 'yes']:
@@ -3023,6 +3023,27 @@ def has_privileges(level, message):
         return True
     else:
         return False
+
+def pluralize(item, count): # can later be expanded to include irregular plurals (e.g. succubus -> succubi)
+    if count <= 0:
+        return ""
+    elif count == 1:
+        return "{} {}".format(count, item)
+    else:
+        return "{} {}s".format(count, item)
+
+def quantified_items_grammatical_list(quantified_items_dict): # can later be expanded to include more than two items (there will be commas)
+    quantified_items_list = []
+    for item in quantified_items_dict:
+        quantified_item = pluralize(item, quantified_items_dict[item])
+        if quantified_item:
+            quantified_items_list.append(quantified_item)
+    if len(quantified_items_list) == 0:
+        return ""
+    elif len(quantified_items_list) == 1:
+        return quantified_items_list[0]
+    elif len(quantified_items_list) == 2:
+        return quantified_items_list[0] + " and " + quantified_items_list[1]
 
 async def send_long_post(channel, post):
     if len(post) <= MAX_MESSAGE_LEN:
