@@ -122,6 +122,21 @@ async def on_ready():
         await log(2, "Could not find Werewolf Notify role " + WEREWOLF_NOTIFY_ROLE_NAME)
     if PLAYING_MESSAGE:
         await client.change_presence(status=discord.Status.online, game=discord.Game(name=PLAYING_MESSAGE))
+    sync_players = False
+    sync_lobby = False
+    for member in client.get_server(WEREWOLF_SERVER).members:
+        if PLAYERS_ROLE in member.roles:
+            if not sync_players:
+                await send_lobby("{}, the bot has restarted, so the game has been cancelled. Type `{}join` to start a new game.".format(PLAYERS_ROLE.mention, BOT_PREFIX))
+                sync_players = True
+            await client.remove_roles(member, PLAYERS_ROLE)
+    perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
+    if not perms.send_messages:
+        perms.send_messages = True
+        await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
+        sync_lobby = True
+    if sync_players or sync_lobby:
+        await log(2, "SYNCED UPON BOT RESTART")
     starttime = datetime.now()
 
 @client.event
