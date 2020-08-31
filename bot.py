@@ -4610,7 +4610,7 @@ async def game_loop(ses=None):
                         killed_dict[harlot] += 1
                         killed_msg += "**{}**, a **harlot**, made the unfortunate mistake of visiting the victim's house last night and is now dead.\n".format(get_name(harlot))
                         wolf_deaths.append(harlot)
-                    elif get_role(visited, 'role') in ACTUAL_WOLVES:
+                    elif get_role(visited, 'role') in ACTUAL_WOLVES and harlot not in guarded:
                         killed_dict[harlot] += 1
                         killed_msg += "**{}**, a **harlot**, made the unfortunate mistake of visiting a wolf's house last night and is now dead.\n".format(get_name(harlot))
                         wolf_deaths.append(harlot)
@@ -4675,7 +4675,8 @@ async def game_loop(ses=None):
                 if target in session[1] and (target in wolf_deaths or target in sk_deaths or 'vg_target' in session[1][target][4]) and not ('protection_totem' in session[1][target][4] or 'blessed' in session[1][target][4] or bodyguard in guarded):
                     killed_dict[bodyguard] += 1
                     killed_dict[target] -= 1
-                    killed_msg += "**{}** sacrificed their life to guard that of another.\n".format(get_name(bodyguard))
+                    if 'protection_totem' not in session[1][bodyguard][4]:
+                        killed_msg += "**{}** sacrificed their life to guard that of another.\n".format(get_name(bodyguard))
                     if target in wolf_deaths:
                         wolf_deaths.append(bodyguard)
                         wolf_deaths.remove(target)
