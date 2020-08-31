@@ -1509,7 +1509,7 @@ async def cmd_vote(message, parameters):
 
 @cmd('lynch', [0, 0], "```\n{0}lynch [<player>]\n\nVotes to lynch [<player>] during the day. If no arguments are given, replies with a list of current votes.```")
 async def cmd_lynch(message, parameters):
-    if not session[0] or not session[2]:
+    if not session[0] or not (session[2] and (datetime.now() - session[3][1]).total_seconds() > 2):
         return
     if parameters == "":
         await cmd_votes(message, parameters)
