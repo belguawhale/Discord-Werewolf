@@ -530,6 +530,7 @@ async def cmd_fstop(message, parameters):
         msg += "."
     elif parameters == "-force":
         if not session[0]:
+            await reply(message, "There is no currently running game!")
             return
         msg += ". Here is some debugging info:\n```py\n{0}\n```".format(str(session))
         session[0] = False
@@ -5018,42 +5019,43 @@ async def game_loop(ses=None):
                             pass
 
             # Piper stuff
-            charmed = sort_players([x for x in alive_players if 'charmed' in session[1][x][4]])
-            tocharm = sort_players([x for x in alive_players if 'tocharm' in session[1][x][4]])
-            for player in tocharm:
-                charmed_total = [x for x in charmed + tocharm if x != player]
-                session[1][player][4].remove('tocharm')
-                session[1][player][4].append('charmed')
-                piper_message = "You hear the sweet tones of a flute coming from outside your window... You inexorably walk outside and find yourself in the village square. "
-                if len(charmed_total) > 2:
-                    piper_message += "You find out that **{0}**, and **{1}** are also charmed!".format('**, **'.join(map(get_name, charmed_total[:-1])), get_name(charmed_total[-1]))
-                elif len(charmed_total) == 2:
-                    piper_message += "You find out that **{0}** and **{1}** are also charmed!".format(get_name(charmed_total[0]), get_name(charmed_total[1]))
-                elif len(charmed_total) == 1:
-                    piper_message += "You find out that **{}** is also charmed!".format(get_name(charmed_total[0]))
-                try:
-                    member = client.get_server(WEREWOLF_SERVER).get_member(player)
-                    if member and piper_message:
-                        await client.send_message(member,piper_message)
-                except discord.Forbidden:
-                    pass
-            fullcharmed = charmed + tocharm
-            for player in charmed:
-                piper_message = ''
-                fullcharmed.remove(player)
-                if len(fullcharmed) > 1:
-                    piper_message = "You, **{0}**, and **{1}** are all charmed!".format('**, **'.join(map(get_name, fullcharmed[:-1])), get_name(fullcharmed[-1]))
-                elif len(fullcharmed) == 1:
-                    piper_message = "You and **{0}** are now charmed!".format(get_name(fullcharmed[0]))
-                elif len(fullcharmed) == 0:
-                    piper_message = "You are the only charmed villager."
-                try:
-                    member = client.get_server(WEREWOLF_SERVER).get_member(player)
-                    if member and piper_message:
-                        await client.send_message(member,piper_message)
-                except discord.Forbidden:
-                    pass
-                fullcharmed.append(player)
+            if session[0]:
+                charmed = sort_players([x for x in alive_players if 'charmed' in session[1][x][4]])
+                tocharm = sort_players([x for x in alive_players if 'tocharm' in session[1][x][4]])
+                for player in tocharm:
+                    charmed_total = [x for x in charmed + tocharm if x != player]
+                    session[1][player][4].remove('tocharm')
+                    session[1][player][4].append('charmed')
+                    piper_message = "You hear the sweet tones of a flute coming from outside your window... You inexorably walk outside and find yourself in the village square. "
+                    if len(charmed_total) > 2:
+                        piper_message += "You find out that **{0}**, and **{1}** are also charmed!".format('**, **'.join(map(get_name, charmed_total[:-1])), get_name(charmed_total[-1]))
+                    elif len(charmed_total) == 2:
+                        piper_message += "You find out that **{0}** and **{1}** are also charmed!".format(get_name(charmed_total[0]), get_name(charmed_total[1]))
+                    elif len(charmed_total) == 1:
+                        piper_message += "You find out that **{}** is also charmed!".format(get_name(charmed_total[0]))
+                    try:
+                        member = client.get_server(WEREWOLF_SERVER).get_member(player)
+                        if member and piper_message:
+                            await client.send_message(member,piper_message)
+                    except discord.Forbidden:
+                        pass
+                fullcharmed = charmed + tocharm
+                for player in charmed:
+                    piper_message = ''
+                    fullcharmed.remove(player)
+                    if len(fullcharmed) > 1:
+                        piper_message = "You, **{0}**, and **{1}** are all charmed!".format('**, **'.join(map(get_name, fullcharmed[:-1])), get_name(fullcharmed[-1]))
+                    elif len(fullcharmed) == 1:
+                        piper_message = "You and **{0}** are now charmed!".format(get_name(fullcharmed[0]))
+                    elif len(fullcharmed) == 0:
+                        piper_message = "You are the only charmed villager."
+                    try:
+                        member = client.get_server(WEREWOLF_SERVER).get_member(player)
+                        if member and piper_message:
+                            await client.send_message(member,piper_message)
+                    except discord.Forbidden:
+                        pass
+                    fullcharmed.append(player)
                 
             # More totem stuff
             if session[0] and win_condition() == None:
