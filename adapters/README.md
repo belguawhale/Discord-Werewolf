@@ -1,0 +1,1 @@
+Adapters are used as an interface for the bot to perform actions such as sending messages.
