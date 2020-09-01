@@ -1,3 +1,13 @@
+# WW files
+config.py
+settings.py
+debug.txt
+notify.txt
+stasis.json
+console.out
+launch.sh
+whalewolf*.py
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
