@@ -1961,8 +1961,10 @@ async def cmd_notify(message, parameters):
         return
     notify = message.author.id in notify_me
     if parameters == '':
-        if message.author.id in stasis and stasis[message.author.id] == 0 or message.author.id not in stasis:
-            online = ["<@{}>".format(x) for x in notify_me if x != message.author.id and is_online(x) and x not in session[1] and (x in stasis and stasis[x] == 0 or x not in stasis)]
+        online = ["<@{}>".format(x) for x in notify_me if x != message.author.id and is_online(x) and x not in session[1] and (x in stasis and stasis[x] == 0 or x not in stasis)]
+        if message.channel.is_private:
+            await reply(message, "PING! {}".format(''.join(online)), cleanmessage=False)
+        elif message.author.id in stasis and stasis[message.author.id] == 0 or message.author.id not in stasis:
             if first_notify:
                 first_notify = False
                 notify_previous = datetime.now()
@@ -4189,9 +4191,11 @@ def sort_roles(role_list):
     return result
 
 async def run_game():
+    global notify_previous
     await client.change_presence(game=client.get_server(WEREWOLF_SERVER).me.game, status=discord.Status.dnd)
     session[0] = True
     session[2] = False
+    notify_previous = datetime.now() - timedelta(seconds=NOTIFY_COOLDOWN)
     if session[6] == '':
         vote_dict = {}
         for player in session[1]:
