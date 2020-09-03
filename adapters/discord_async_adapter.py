@@ -71,7 +71,8 @@ class DiscordAsyncAdapter(BaseAdapter):
 
     async def send_message(self, destination, message):
         """Sends a message to destination."""
-        return await self.client.send_message(destination, message)
+        if destination:
+            return await self.client.send_message(destination, message)
 
     async def get_user_destination(self, user_id):
         """Gets a destination for user_id that can be used in send_message"""
