@@ -61,11 +61,11 @@ class BaseAdapter:
         """Sets status of the lobby, using constants.LobbyStatus"""
         return NotImplemented
 
-    # Helper methods
+    async def reply(self, message, text, cleanmessage=True, mentionauthor=False):
+        """Sends a reply in the same channel as the message object"""
+        return NotImplemented
 
-    async def send_player(self, player_id, message):
-        """Sends a message to player_id"""
-        return await self.send_message(await self.get_user_destination(player_id), message)
+    # Helper methods
 
     async def send_channel(self, channel_id, message):
         """Sends a message to channel_id"""

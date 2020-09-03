@@ -16,6 +16,7 @@ class DiscordAsyncAdapter(BaseAdapter):
         self.config = config
         self.initialized = False
 
+        # discord.py objects
         self.WEREWOLF_SERVER = None
         self.PLAYERS_ROLE = None
         self.ADMINS_ROLE = None
@@ -196,3 +197,19 @@ class DiscordAsyncAdapter(BaseAdapter):
         }
         discord_status = lobby_discord_status_mapping.get(status, discord.Status.online)
         await self.client.change_presence(status=discord_status, game=discord.Game(name=self.config.PLAYING_MESSAGE))
+
+    async def send_user(self, user_id, message, Raise=False):
+        """Sends a message to user_id"""
+        try:
+            return await self.send_message(await self.get_user_destination(user_id), message)
+        except discord.Forbidden:
+            if Raise:
+                raise
+
+    async def reply(self, message, text, cleanmessage=True, mentionauthor=False):
+        """Sends a reply in the same channel as the message object"""
+        if cleanmessage:
+            text = text.replace('@', '@\u200b')
+        if mentionauthor:
+            text = "{0}, {1}".format(message.author.mention, text)
+        await self._send_long_post(message.channel, text)
