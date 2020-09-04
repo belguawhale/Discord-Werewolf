@@ -542,10 +542,11 @@ async def cmd_fstop(message, parameters):
 @cmd('sync', [1, 1], "```\n{0}sync takes no arguments\n\nSynchronizes all player roles and channel permissions with session.```")
 async def cmd_sync(message, parameters):
     for member in adapter.WEREWOLF_SERVER.members:
-        if member.id in session[1] and session[1][member.id][0]:
-            await adapter.add_player_role(member.id)
-        else:
+        should_have_role = member.id in session[1] and session[1][member.id][0]
+        if await adapter.has_player_role(member.id) and not should_have_role:
             await adapter.remove_player_role(member.id)
+        elif not await adapter.has_player_role(member.id) and should_have_role:
+            await adapter.add_player_role(member.id)
     if session[0]:
         await adapter.lock_lobby()
     else:

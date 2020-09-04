@@ -20,6 +20,10 @@ class BaseAdapter:
     async def remove_player_role(self, user_id):
         """Revokes user_id Player role"""
         return NotImplemented
+    
+    async def has_player_role(self, user_id):
+        """Returns whether user_id has the Player role"""
+        return NotImplemented
 
     async def add_admin_role(self, user_id):
         """Grants user_id Admin role"""

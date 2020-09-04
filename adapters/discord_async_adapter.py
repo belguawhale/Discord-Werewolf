@@ -94,6 +94,11 @@ class DiscordAsyncAdapter(BaseAdapter):
         if member:
             await self.client.remove_roles(member, self.PLAYERS_ROLE)
 
+    async def has_player_role(self, user_id):
+        """Returns whether user_id has the Player role"""
+        member = await self.get_user_destination(user_id)
+        return member and self.PLAYERS_ROLE in member.roles
+
     async def add_admin_role(self, user_id):
         """Grants user_id Admin role"""
         member = await self.get_user_destination(user_id)
