@@ -289,7 +289,7 @@ async def cmd_join(message, parameters):
         return
     if message.author.id in stasis and stasis[message.author.id] > 0:
         await adapter.reply(message, "You are in stasis for **{}** game{}. Please do not break rules, idle out or use !leave during a game.".format(
-                                stasis[message.author.id], '' if stasis[message.author.id] == 1 else 's'))
+                                stasis[message.author.id], '' if stasis[message.author.id] == 1 else 's'), mentionauthor=True)
         return
     if len(session[1]) >= MAX_PLAYERS:
         await adapter.reply(message, random.choice(lang['maxplayers']).format(MAX_PLAYERS), mentionauthor=True)
@@ -480,7 +480,7 @@ async def cmd_start(message, parameters):
         return
     if datetime.now() < wait_timer:
         await adapter.reply(message, "Please wait at least {} more second{}.".format(
-            int((wait_timer - datetime.now()).total_seconds()), '' if int((wait_timer - datetime.now()).total_seconds()) == 1 else 's'))
+            int((wait_timer - datetime.now()).total_seconds()), '' if int((wait_timer - datetime.now()).total_seconds()) == 1 else 's'), mentionauthor=True)
         return
     session[1][message.author.id][1] = 'start'
     votes = len([x for x in session[1] if session[1][x][1] == 'start'])
@@ -607,7 +607,7 @@ async def cmd_role(message, parameters):
     elif _autocomplete(parameters, roles)[1] == 1:
         role = _autocomplete(parameters, roles)[0]
         await adapter.reply(message, "<https://werewolf.miraheze.org/wiki/{}>\n```\nRole name: {}\nTeam: {}\nDescription: {}\n```".format(
-            role + "_(role)" if role == "lycan" else role.replace(' ', '_'), role, roles[role][0], roles[role][2]))
+            role + "_(role)" if role == "lycan" else role.replace(' ', '_'), role, roles[role][0], roles[role][2]), mentionauthor=True)
         return
     params = parameters.split(' ')
     gamemode = 'default'
@@ -1051,7 +1051,7 @@ async def cmd_see(message, parameters):
                             reply_msg = "exudes a **{}** aura".format(
                                 'red' if seen_role == 'wolf' else 'blue' if seen_role == 'village' else 'grey')
                         await adapter.reply(message, "You have a vision... in your vision you see that **{}** {}!".format(
-                            get_name(player), reply_msg))
+                            get_name(player), reply_msg), mentionauthor=True)
                         await adapter.log(1, "{0} ({1}) SEE {2} ({3}) AS {4}".format(get_name(message.author.id), message.author.id, get_name(player), player, seen_role))
                 else:
                     if player == message.author.id:
@@ -1410,7 +1410,7 @@ async def cmd_kill(message, parameters):
                     redirected_targets.append(player)
             session[1][message.author.id][2] = ','.join(redirected_targets)
             await adapter.reply(message, "You have voted to kill **{}**.".format('** and **'.join(
-                map(get_name, valid_targets))))
+                map(get_name, valid_targets))), mentionauthor=True)
             await wolfchat("**{}** has voted to kill **{}**.".format(get_name(message.author.id), '** and **'.join(
                 map(get_name, valid_targets))))
             await adapter.log(1, "{0} ({1}) KILL {2} ({3})".format(get_name(message.author.id), message.author.id,
@@ -1725,7 +1725,7 @@ async def cmd_time(message, parameters):
             timeleft = GAME_START_TIMEOUT - (datetime.now() - session[5]).seconds
             await adapter.reply(message, "There is **{0:02d}:{1:02d}** left to start the game until it will be automatically cancelled. "
                                  "GAME_START_TIMEOUT is currently set to **{2:02d}:{3:02d}**.".format(
-                                     timeleft // 60, timeleft % 60, GAME_START_TIMEOUT // 60, GAME_START_TIMEOUT % 60))
+                                     timeleft // 60, timeleft % 60, GAME_START_TIMEOUT // 60, GAME_START_TIMEOUT % 60), mentionauthor=True)
 
 @cmd('give', [2, 0], "```\n{0}give <player>\n\nIf you are a shaman or wolf shaman, gives your totem to <player>. You can see your totem by using `myrole` in pm.```")
 async def cmd_give(message, parameters):
@@ -2479,7 +2479,7 @@ async def cmd_gamemode(message, parameters):
         await adapter.reply(message, "<https://werewolf.miraheze.org/wiki/{}>\n```\nGamemode: {}\nPlayers: {}\nDescription: {}\n\nUse the command "
                              "`!roles {} guide` to view roles for this gamemode.```".format(gamemode + "_(gamemode)" if gamemode == "lycan" else gamemode.replace(' ', '_'),
         gamemode, str(gamemodes[gamemode]['min_players']) + '-' + str(gamemodes[gamemode]['max_players']),
-        gamemodes[gamemode]['description'], gamemode))
+        gamemodes[gamemode]['description'], gamemode), mentionauthor=True)
     else:
         game_list = ""
         game_list += "\n```ini\n[Main Modes] " + ", ".join(sorted(x for x in (gamemodes) if gamemodes[x]['chance'] != 0))
@@ -2645,7 +2645,7 @@ async def cmd_target(message, parameters):
                         player = misdirect(player, alive_players=[x for x in session[1] if session[1][x][0] and x != message.author.id and not (get_role(x, 'role') == 'succubus' and 'entranced' in session[1][message.author.id][4])])
                     session[1][message.author.id][4].append("assassinate:{}".format(player))
                     await adapter.reply(message, "You have chosen to target **{}**. They will be your target until they die.".format(
-                        get_name(player)))
+                        get_name(player)), mentionauthor=True)
                     await adapter.log(1, "{0} ({1}) TARGET {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
             else:
                 await adapter.reply(message, "Could not find player " + parameters, mentionauthor=True)
@@ -2694,7 +2694,7 @@ async def cmd_observe(message, parameters):
                         elif 'luck_totem2' in session[1][player][4]:
                             player = misdirect(player, alive_players=[x for x in session[1] if session[1][x][0] and get_role(x, 'role') not in WOLFCHAT_ROLES and not (get_role(x, 'role') == 'succubus' and 'entranced' in session[1][message.author.id][4])])
                         await adapter.reply(message, "You transform into a large crow and start your flight to **{0}'s** house. You will "
-                                            "return after collecting your observations when day begins.".format(get_name(player)))
+                                            "return after collecting your observations when day begins.".format(get_name(player)), mentionauthor=True)
                         await wolfchat("**{}** is observing **{}**.".format(get_name(message.author.id), get_name(player)))
                         await adapter.log(1, "{0} ({1}) OBSERVE {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
                         while not session[2] and win_condition() == None and session[0]:
@@ -2782,7 +2782,7 @@ async def cmd_id(message, parameters):
                     elif 'luck_totem2' in session[1][player][4]:
                         player = misdirect(player, alive_players=[x for x in session[1] if session[1][x][0] and x != message.author.id])
                     await adapter.reply(message, "The results of your investigation have returned. **{}** is a **{}**!".format(
-                        get_name(player), get_role(player, 'role') if not get_role(player, 'role') == 'amnesiac' else [x.split(':')[1].replace("_", " ") for x in session[1][player][4] if x.startswith("role:")].pop()))
+                        get_name(player), get_role(player, 'role') if not get_role(player, 'role') == 'amnesiac' else [x.split(':')[1].replace("_", " ") for x in session[1][player][4] if x.startswith("role:")].pop()), mentionauthor=True)
                     await adapter.log(1, "{0} ({1}) INVESTIGATE {2} ({3})".format(get_name(message.author.id), message.author.id, get_name(player), player))
                     if random.random() < DETECTIVE_REVEAL_CHANCE:
                         await wolfchat("Someone accidentally drops a paper. The paper reveals that **{}** ({}) is the detective!".format(
