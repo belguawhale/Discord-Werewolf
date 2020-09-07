@@ -23,6 +23,7 @@ class DiscordAsyncAdapter(BaseAdapter):
         self.WEREWOLF_NOTIFY_ROLE = None
         self.GAME_CHANNEL = None
         self.DEBUG_CHANNEL = None
+        self.BOT_NAME = None
 
     async def async_init(self):
         """This should run before anything else."""
@@ -33,6 +34,7 @@ class DiscordAsyncAdapter(BaseAdapter):
         self.WEREWOLF_SERVER = self.client.get_server(self.config.WEREWOLF_SERVER)
         self.GAME_CHANNEL = self.client.get_channel(self.config.GAME_CHANNEL)
         self.DEBUG_CHANNEL = self.client.get_channel(self.config.DEBUG_CHANNEL)
+        self.BOT_NAME = self.client.user.display_name
 
         for role in self.WEREWOLF_SERVER.role_hierarchy:
             if role.name == self.config.PLAYERS_ROLE_NAME:
@@ -82,6 +84,14 @@ class DiscordAsyncAdapter(BaseAdapter):
         """Gets a destination for channel_id that can be used in send_message"""
         return self.client.get_channel(channel_id)
     
+    async def wait_for_message(self, author=None, channel=None, timeout=None, check=None):
+        """Waits for a message satisfying the requirements, and either returns it or None if it times out"""
+        return await self.client.wait_for_message(author=author, channel=channel, timeout=timeout, check=check)
+    
+    async def delete_message(self, message):
+        """Deletes a message"""
+        return await self.client.delete_message(message)
+
     async def add_player_role(self, user_id):
         """Grants user_id Player role"""
         member = await self.get_user_destination(user_id)
@@ -188,8 +198,7 @@ class DiscordAsyncAdapter(BaseAdapter):
 
     async def _send_long_post(self, channel, post):
         if len(post) <= self.MAX_MESSAGE_LEN:
-            await self.send_message(channel, post)
-            return
+            return await self.send_message(channel, post)
         else:
             await self.send_message(channel, post[:self.MAX_MESSAGE_LEN])
             await self._send_long_post(channel, post[self.MAX_MESSAGE_LEN:])
@@ -218,4 +227,4 @@ class DiscordAsyncAdapter(BaseAdapter):
             text = text.replace('@', '@\u200b')
         if mentionauthor:
             text = "{0}, {1}".format(message.author.mention, text)
-        await self._send_long_post(message.channel, text)
+        return await self._send_long_post(message.channel, text)

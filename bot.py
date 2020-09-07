@@ -114,7 +114,7 @@ async def on_resume():
 async def on_message(message):
     if not starttime:
         return
-    if message.author.id in [client.user.id] + IGNORE_LIST or not client.get_server(WEREWOLF_SERVER).get_member(message.author.id):
+    if message.author.id in [client.user.id] + IGNORE_LIST or not adapter.WEREWOLF_SERVER.get_member(message.author.id):
         if not (message.author.id in ADMINS or message.author.id == OWNER_ID):
             return
     if await rate_limit(message):
@@ -181,7 +181,7 @@ async def cmd_shutdown(message, parameters):
 @cmd('ping', [0, 0], "```\n{0}ping takes no arguments\n\nTests the bot\'s responsiveness.```")
 async def cmd_ping(message, parameters):
     msg = random.choice(lang['ping']).format(
-        bot_nick=client.user.display_name, author=message.author.name, p=BOT_PREFIX)
+        bot_nick=adapter.BOT_NAME, author=message.author.name, p=BOT_PREFIX)
     await adapter.reply(message, msg, mentionauthor=True)
 
 @cmd('eval', [2, 2], "```\n{0}eval <evaluation string>\n\nEvaluates <evaluation string> using Python\'s eval() function and returns a result. Owner-only.```")
@@ -321,14 +321,14 @@ async def cmd_leave(message, parameters):
     if session[0] and message.author.id in session[1] and session[1][message.author.id][0]:
         if parameters != '-force':
             msg = await adapter.reply(message, "Are you sure you want to quit during game? Doing "
-                                                             "so will result in {} games of stasis. You may bypass "
-                                                             "this confirmation by using `{}leave -force`.".format(
-                                                                 QUIT_GAME_STASIS, BOT_PREFIX))
+                                                "so will result in {} games of stasis. You may bypass "
+                                                "this confirmation by using `{}leave -force`.".format(
+                                                    QUIT_GAME_STASIS, BOT_PREFIX))
             def check(m):
                 c = m.content.lower()
                 return c in ['yes', 'y', 'no', 'n']
-            response = await client.wait_for_message(author=message.author, channel=message.channel, timeout=5, check=check)
-            await client.delete_message(msg)
+            response = await adapter.wait_for_message(author=message.author, channel=message.channel, timeout=5, check=check)
+            await adapter.delete_message(msg)
             if not response or response.content.lower() not in ['yes', 'y']:
                 return
         if not session[1][message.author.id][0]:
@@ -516,9 +516,7 @@ async def cmd_fstop(message, parameters):
             return
         msg += ". Here is some debugging info:\n```py\n{0}\n```".format(str(session))
         session[0] = False
-        perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
-        perms.send_messages = True
-        await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
+        await adapter.unlock_lobby()
         session[3] = [datetime.now(), datetime.now()]
         session[4] = [timedelta(0), timedelta(0)]
         session[6] = ''
@@ -1629,7 +1627,7 @@ async def cmd_coin(message, parameters):
     if value == 1:
         reply_msg = 'its side'
     elif value == 100:
-        reply_msg = client.user.name
+        reply_msg = adapter.BOT_NAME
     elif value < 50:
         reply_msg = 'heads'
     else:
@@ -1834,8 +1832,8 @@ async def cmd_ignore(message, parameters):
     else:
         action = parameters.split(' ')[0].lower()
         target = ' '.join(parameters.split(' ')[1:])
-        member_by_id = client.get_server(WEREWOLF_SERVER).get_member(target.strip('<@!>'))
-        member_by_name = client.get_server(WEREWOLF_SERVER).get_member_named(target)
+        member_by_id = adapter.WEREWOLF_SERVER.get_member(target.strip('<@!>'))
+        member_by_name = adapter.WEREWOLF_SERVER.get_member_named(target)
         member = None
         if member_by_id:
             member = member_by_id
@@ -1865,7 +1863,7 @@ async def cmd_ignore(message, parameters):
             else:
                 msg_dict = {}
                 for ignored in IGNORE_LIST:
-                    member = client.get_server(WEREWOLF_SERVER).get_member(ignored)
+                    member = adapter.WEREWOLF_SERVER.get_member(ignored)
                     msg_dict[ignored] = member.name if member else "<user not in server with id " + ignored + ">"
                 await adapter.reply(message, str(len(IGNORE_LIST)) + " ignored users:\n```\n" + '\n'.join([x + " (" + msg_dict[x] + ")" for x in msg_dict]) + "```", mentionauthor=True)
         else:
@@ -2422,7 +2420,7 @@ async def cmd_fstasis(message, parameters):
         return
     params = parameters.split(' ')
     player = params[0].strip('<!@>')
-    member = client.get_server(WEREWOLF_SERVER).get_member(player)
+    member = adapter.WEREWOLF_SERVER.get_member(player)
     name = "user not in server with id " + player
     if member:
         name = member.display_name
@@ -2608,7 +2606,7 @@ async def cmd_shoot(message, parameters):
     if pm:
         target = message.author
     else:
-        target = client.get_channel(GAME_CHANNEL)
+        target = adapter.GAME_CHANNEL
     try:
         await adapter.send_user(target.id, msg)
     except discord.Forbidden:
@@ -3443,7 +3441,7 @@ def end_game_stats():
     return role_msg
 
 def get_name(player):
-    member = client.get_server(WEREWOLF_SERVER).get_member(player)
+    member = adapter.WEREWOLF_SERVER.get_member(player)
     if member:
         return str(member.display_name)
     else:
@@ -3459,7 +3457,7 @@ def get_player(string):
     for player in session[1]:
         if string == player.lower() or string.strip('<@!>') == player:
             return player
-        member = client.get_server(WEREWOLF_SERVER).get_member(player)
+        member = adapter.WEREWOLF_SERVER.get_member(player)
         if member:
             if member.name.lower().startswith(string):
                 users.append(player)
@@ -3489,7 +3487,7 @@ def sort_players(players):
     fake = []
     real = []
     for player in players:
-        if client.get_server(WEREWOLF_SERVER).get_member(player):
+        if adapter.WEREWOLF_SERVER.get_member(player):
             real.append(player)
         else:
             fake.append(player)
@@ -3687,7 +3685,7 @@ async def wolfchat(message, author=''):
     else:
         msg = str(message)
 
-    member = client.get_server(WEREWOLF_SERVER).get_member(author)
+    member = adapter.WEREWOLF_SERVER.get_member(author)
     if member:
         athr = member.display_name
     else:
@@ -3705,17 +3703,14 @@ async def player_idle(message):
         def check(msg):
             if not message.author.id in session[1] or not session[1][message.author.id][0] or not session[0]:
                 return True
-            if msg.author.id == message.author.id and msg.channel.id == client.get_channel(GAME_CHANNEL).id:
+            if msg.author.id == message.author.id and msg.channel.id == adapter.GAME_CHANNEL.id:
                 return True
             return False
-        msg = await client.wait_for_message(author=message.author, channel=client.get_channel(GAME_CHANNEL), timeout=PLAYER_TIMEOUT, check=check)
+        msg = await adapter.wait_for_message(author=message.author, channel=adapter.GAME_CHANNEL, timeout=PLAYER_TIMEOUT, check=check)
         if msg == None and message.author.id in session[1] and session[0] and session[1][message.author.id][0]:
             await adapter.send_lobby(message.author.mention + "**, you have been idling for a while. Please say something soon or you might be declared dead.**")
-            try:
-                await adapter.send_user(message.author.id, "**You have been idling in #" + client.get_channel(GAME_CHANNEL).name + " for a while. Please say something soon or you might be declared dead.**")
-            except discord.Forbidden:
-                pass
-            msg = await client.wait_for_message(author=message.author, channel=client.get_channel(GAME_CHANNEL), timeout=PLAYER_TIMEOUT2, check=check)
+            await adapter.send_user(message.author.id, "**You have been idling in #" + adapter.GAME_CHANNEL.name + " for a while. Please say something soon or you might be declared dead.**")
+            msg = await adapter.wait_for_message(author=message.author, channel=adapter.GAME_CHANNEL, timeout=PLAYER_TIMEOUT2, check=check)
             if msg == None and message.author.id in session[1] and session[0] and session[1][message.author.id][0]:
                 if session[6] == 'noreveal':
                     await adapter.send_lobby("**" + get_name(message.author.id) + "** didn't get out of bed for a very long time and has been found dead.")
@@ -3731,7 +3726,7 @@ async def player_idle(message):
                 await adapter.log(1, "{} ({}) IDLE OUT".format(message.author.display_name, message.author.id))
 
 def is_online(user_id):
-    member = client.get_server(WEREWOLF_SERVER).get_member(user_id)
+    member = adapter.WEREWOLF_SERVER.get_member(user_id)
     if member and member.status in [discord.Status.online, discord.Status.idle]:
         return True
     return False
@@ -4071,9 +4066,7 @@ async def run_game():
     for player in session[1]:
         session[1][player][1] = ''
         session[1][player][2] = ''
-    perms = client.get_channel(GAME_CHANNEL).overwrites_for(client.get_server(WEREWOLF_SERVER).default_role)
-    perms.send_messages = False
-    await client.edit_channel_permissions(client.get_channel(GAME_CHANNEL), client.get_server(WEREWOLF_SERVER).default_role, perms)
+    await adapter.lock_lobby()
     if not get_roles(session[6], len(session[1])):
         session[6] = 'default' # Fallback if invalid number of players for gamemode or invalid gamemode somehow
 

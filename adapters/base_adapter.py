@@ -13,6 +13,14 @@ class BaseAdapter:
         """Gets a destination for channel_id that can be used in send_message"""
         return NotImplemented
     
+    async def wait_for_message(self, author=None, channel=None, timeout=None, check=None):
+        """Waits for a message satisfying the requirements, and either returns it or None if it times out"""
+        return NotImplemented
+    
+    async def delete_message(self, message):
+        """Deletes a message"""
+        return NotImplemented
+    
     async def add_player_role(self, user_id):
         """Grants user_id Player role"""
         return NotImplemented
