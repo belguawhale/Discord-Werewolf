@@ -958,7 +958,6 @@ async def cmd_stats(message, parameters):
         for template in TEMPLATES_ORDERED:
             if template in orig_roles:
                 del orig_roles[template]
-        print(role_dict)
         for role in sort_roles(list(set(roles) - set(TEMPLATES_ORDERED))):
             if role in orig_roles or role_dict[role][0]:
                 if role_dict[role][0] == role_dict[role][1]:
