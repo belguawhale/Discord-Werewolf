@@ -1801,7 +1801,7 @@ async def cmd_notify_role(message, parameters):
         await adapter.reply(message, "Error: A " + config.WEREWOLF_NOTIFY_ROLE_NAME + " role does not exist. Please let an admin know.", mentionauthor=True)
         return
     # TODO: how to refactor to use adapter?
-    member = adapter.get_user_destination(message.author.id)
+    member = await adapter.get_user_destination(message.author.id)
     if not member:
         await adapter.reply(message, "You are not in the server!", mentionauthor=True)
     has_role = adapter.WEREWOLF_NOTIFY_ROLE in member.roles
